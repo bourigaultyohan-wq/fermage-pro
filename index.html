@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fermage Pro</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f0ede8; color:#1e1e1c; font-size:15px; line-height:1.6; }
+
+    /* ═══ LAYOUT ═══ */
+    .app { display:flex; height:100vh; overflow:hidden; }
+    .sidebar {
+      width:250px; background:#1e1e1c; color:white;
+      display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto;
+    }
+    .sidebar-logo { padding:24px 20px 18px; border-bottom:1px solid #3a3a38; }
+    .sidebar-logo h1 { font-size:20px; font-weight:700; letter-spacing:-0.3px; }
+    .sidebar-logo p { font-size:12px; color:#888; margin-top:4px; }
+    .sidebar-nav { flex:1; padding:16px 0; }
+    .nav-section {
+      font-size:10px; color:#666; text-transform:uppercase; letter-spacing:1.5px;
+      padding:16px 20px 6px;
+    }
+    .nav-item {
+      display:flex; align-items:center; gap:12px; padding:13px 20px;
+      cursor:pointer; font-size:14px; font-weight:500; color:#bbb;
+      transition:all 0.15s; border:none; background:none; width:100%; text-align:left;
+      border-left:3px solid transparent;
+    }
+    .nav-item:hover { background:#2e2e2c; color:white; border-left-color:#555; }
+    .nav-item.active { background:#854f0b; color:white; border-left-color:#f0a050; }
+    .nav-item .icon { font-size:18px; width:22px; text-align:center; }
+    .nav-item .nav-desc { font-size:11px; color:#888; display:block; margin-top:1px; font-weight:400; }
+    .nav-item.active .nav-desc { color:#f5d9b0; }
+
+    .main { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+    .topbar {
+      background:white; border-bottom:2px solid #e0ddd8; padding:16px 28px;
+      display:flex; justify-content:space-between; align-items:center; flex-shrink:0;
+      box-shadow:0 2px 8px rgba(0,0,0,0.06);
+    }
+    .topbar-left h2 { font-size:20px; font-weight:700; color:#1e1e1c; }
+    .topbar-left p { font-size:13px; color:#888780; margin-top:2px; }
+    .topbar-actions { display:flex; gap:10px; }
+    .content { padding:28px; flex:1; }
+
+    /* ═══ INFO BLOCKS ═══ */
+    .info-block {
+      border-radius:8px; padding:14px 16px; margin-bottom:16px;
+      display:flex; gap:12px; align-items:flex-start; font-size:14px;
+    }
+    .info-block .ib-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+    .info-block .ib-text strong { display:block; font-size:14px; margin-bottom:2px; }
+    .info-block .ib-text span { font-size:13px; line-height:1.5; }
+    .info-blue { background:#e8f4fd; border:1px solid #b3d9f5; color:#1a5276; }
+    .info-green { background:#eaf3de; border:1px solid #a8d48a; color:#1e5c0a; }
+    .info-orange { background:#faeeda; border:1px solid #f0c060; color:#7a3e00; }
+    .info-yellow { background:#fefbe8; border:1px solid #f0d060; color:#5a4a00; }
+
+    /* ═══ METRICS ═══ */
+    .grid-4 { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:24px; }
+    .metric {
+      background:white; border:2px solid #e0ddd8; border-radius:10px; padding:20px;
+      transition:box-shadow 0.15s;
+    }
+    .metric:hover { box-shadow:0 4px 16px rgba(0,0,0,0.08); }
+    .metric-icon { font-size:28px; margin-bottom:8px; }
+    .metric-label { font-size:12px; color:#888780; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+    .metric-value { font-size:28px; font-weight:800; }
+    .metric-sub { font-size:12px; color:#888780; margin-top:4px; }
+
+    /* ═══ CARDS ═══ */
+    .card {
+      background:white; border:1px solid #e0ddd8; border-radius:10px;
+      padding:24px; margin-bottom:16px; box-shadow:0 1px 4px rgba(0,0,0,0.04);
+    }
+    .card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:12px; }
+    .card-title { font-size:17px; font-weight:700; color:#1e1e1c; }
+    .card-subtitle { font-size:13px; color:#888780; margin-top:2px; font-weight:400; }
+
+    /* ═══ TABLE ═══ */
+    .table-wrap { overflow-x:auto; border-radius:8px; border:1px solid #e0ddd8; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th {
+      background:#f5f3f0; padding:12px 16px; text-align:left;
+      font-weight:700; font-size:12px; text-transform:uppercase; color:#888780;
+      letter-spacing:0.5px; border-bottom:2px solid #e0ddd8;
+    }
+    td { padding:14px 16px; border-bottom:1px solid #f0ede8; vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:#faf8f5; }
+
+    /* ═══ BUTTONS ═══ */
+    .btn {
+      padding:11px 20px; border:2px solid #d3d1c7; background:white; border-radius:8px;
+      cursor:pointer; font-size:14px; font-weight:600; font-family:inherit;
+      transition:all 0.15s; display:inline-flex; align-items:center; gap:6px;
+    }
+    .btn:hover { background:#f5f3f0; border-color:#b4b2a9; }
+    .btn:active { transform:scale(0.98); }
+    .btn-primary { background:#854f0b; color:white; border-color:#854f0b; }
+    .btn-primary:hover { background:#6a3e08; border-color:#6a3e08; }
+    .btn-success { background:#2e7d0e; color:white; border-color:#2e7d0e; }
+    .btn-success:hover { background:#256310; }
+    .btn-sm { padding:7px 14px; font-size:13px; }
+    .btn-danger { color:#a32d2d; border-color:#f09595; background:white; }
+    .btn-danger:hover { background:#fff5f5; border-color:#e07070; }
+    .btn-group { display:flex; gap:8px; flex-wrap:wrap; }
+
+    /* ═══ BADGES ═══ */
+    .badge {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:4px 10px; border-radius:20px; font-size:12px; font-weight:700;
+    }
+    .badge-green { background:#d4edda; color:#155724; border:1px solid #a8d48a; }
+    .badge-orange { background:#faeeda; color:#854f0b; border:1px solid #f0c060; }
+    .badge-red { background:#fdecea; color:#a32d2d; border:1px solid #f09595; }
+    .badge-gray { background:#f0ede8; color:#666; border:1px solid #d3d1c7; }
+    .badge-blue { background:#e8f4fd; color:#1a5276; border:1px solid #b3d9f5; }
+
+    /* ═══ FORMS ═══ */
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+    .form-full { margin-bottom:14px; }
+    .form-group { display:flex; flex-direction:column; gap:5px; }
+    .form-group label {
+      font-size:13px; color:#444; font-weight:700;
+      display:flex; align-items:center; gap:5px;
+    }
+    .form-group .field-hint { font-size:12px; color:#888780; font-weight:400; font-style:italic; }
+    .form-group input, .form-group select, .form-group textarea {
+      padding:11px 14px; border:2px solid #d3d1c7; border-radius:8px;
+      font-size:14px; font-family:inherit; background:#fafaf8;
+      transition:border-color 0.15s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline:none; border-color:#854f0b; background:white;
+      box-shadow:0 0 0 3px rgba(133,79,11,0.1);
+    }
+    .form-section { margin:20px 0 12px; padding-top:18px; border-top:2px solid #f0ede8; }
+    .form-section-title {
+      font-size:12px; font-weight:800; color:#854f0b;
+      text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;
+      display:flex; align-items:center; gap:6px;
+    }
+    .required-star { color:#a32d2d; }
+
+    /* ═══ MODAL ═══ */
+    .modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center; }
+    .modal-backdrop.open { display:flex; }
+    .modal-box {
+      background:white; border-radius:12px; padding:28px; width:90%;
+      max-height:90vh; overflow-y:auto; box-shadow:0 12px 48px rgba(0,0,0,0.22);
+    }
+    .modal-box.wide { max-width:720px; }
+    .modal-box.narrow { max-width:460px; }
+    .modal-head {
+      display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;
+      padding-bottom:16px; border-bottom:2px solid #f0ede8;
+    }
+    .modal-head h3 { font-size:18px; font-weight:800; color:#1e1e1c; }
+    .modal-head p { font-size:13px; color:#888780; margin-top:4px; }
+    .modal-close {
+      background:#f0ede8; border:none; font-size:18px; cursor:pointer;
+      color:#888780; width:32px; height:32px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .modal-close:hover { background:#e0ddd8; color:#1e1e1c; }
+    .modal-actions {
+      display:flex; gap:10px; justify-content:flex-end;
+      margin-top:24px; padding-top:18px; border-top:2px solid #f0ede8;
+    }
+
+    /* ═══ PLANNING ═══ */
+    .planning-item {
+      display:flex; gap:8px; align-items:center; background:#f5f3f0;
+      border:1px solid #e0ddd8; border-radius:8px; padding:10px 12px; margin-bottom:8px;
+    }
+    .planning-item select, .planning-item input {
+      padding:6px 10px; border:1px solid #d3d1c7; border-radius:6px;
+      font-size:13px; font-family:inherit; background:white;
+    }
+
+    /* ═══ TOOLTIP ═══ */
+    .help {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:18px; height:18px; border-radius:50%; background:#854f0b;
+      color:white; font-size:11px; font-weight:800; cursor:help; flex-shrink:0;
+    }
+    .help:hover { background:#633806; }
+    #tip {
+      display:none; position:fixed; background:#1e1e1c; color:white; font-size:13px;
+      padding:10px 14px; border-radius:8px; max-width:260px; line-height:1.6;
+      box-shadow:0 6px 20px rgba(0,0,0,0.25); pointer-events:none; z-index:9999;
+    }
+
+    /* ═══ EMPTY STATES ═══ */
+    .empty-state {
+      text-align:center; padding:48px 24px; color:#888780;
+    }
+    .empty-state .es-icon { font-size:48px; margin-bottom:16px; }
+    .empty-state h3 { font-size:18px; font-weight:700; color:#444; margin-bottom:8px; }
+    .empty-state p { font-size:14px; max-width:360px; margin:0 auto 20px; line-height:1.6; }
+
+    /* ═══ FACTURE CARDS ═══ */
+    .facture-row { display:flex; gap:14px; align-items:flex-start; margin-bottom:8px; flex-wrap:wrap; }
+    .fcard {
+      background:white; border:2px solid #e0ddd8; border-radius:10px;
+      padding:18px; min-width:200px; flex:1;
+    }
+    .fcard.paid { border-color:#a8d48a; background:#f4fbf0; }
+    .fcard-title { font-weight:800; font-size:15px; }
+    .fcard-sub { font-size:12px; color:#888780; margin-top:2px; }
+    .fcard-prop { font-size:12px; color:#854f0b; font-weight:600; margin-top:4px; }
+    .fcard-amount { font-size:22px; font-weight:800; color:#854f0b; margin:10px 0 6px; }
+    .fcard.paid .fcard-amount { color:#27500a; }
+    .fcard-status { font-size:13px; font-weight:700; }
+    .fcard-actions { display:flex; gap:8px; margin-top:12px; }
+
+    /* ═══ DETAIL TABLE ═══ */
+    .detail-table { background:#f5f3f0; border-radius:8px; padding:14px; margin-top:12px; font-size:14px; }
+    .drow { display:flex; justify-content:space-between; padding:4px 0; gap:12px; }
+    .drow:last-child { border-top:1px solid #d3d1c7; padding-top:8px; margin-top:4px; font-weight:700; }
+
+    /* ═══ STEP GUIDE ═══ */
+    .step-guide { display:flex; gap:0; margin-bottom:24px; }
+    .step { flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; position:relative; }
+    .step::after { content:''; position:absolute; top:20px; left:50%; width:100%; height:2px; background:#d3d1c7; z-index:0; }
+    .step:last-child::after { display:none; }
+    .step-num {
+      width:40px; height:40px; border-radius:50%; background:#d3d1c7; color:#888780;
+      font-size:16px; font-weight:800; display:flex; align-items:center; justify-content:center;
+      position:relative; z-index:1; margin-bottom:8px; flex-shrink:0;
+    }
+    .step.done .step-num { background:#27500a; color:white; }
+    .step.current .step-num { background:#854f0b; color:white; box-shadow:0 0 0 4px rgba(133,79,11,0.2); }
+    .step-label { font-size:12px; font-weight:600; color:#888780; }
+    .step.done .step-label, .step.current .step-label { color:#1e1e1c; }
+
+    @media (max-width:768px) {
+      .sidebar { width:70px; }
+      .sidebar-logo p, .nav-item span:not(.icon), .nav-section, .nav-desc { display:none; }
+      .form-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="tip"></div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h1>🌾 Fermage Pro</h1>
+      <p>Gestion des baux ruraux</p>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section">Suivi</div>
+      <button class="nav-item active" onclick="nav('dashboard')">
+        <span class="icon">📊</span>
+        <span>Tableau de bord<span class="nav-desc">Vue d'ensemble</span></span>
+      </button>
+      <button class="nav-item" onclick="nav('factures')">
+        <span class="icon">🧾</span>
+        <span>Facturation<span class="nav-desc">Acomptes et soldes</span></span>
+      </button>
+      <div class="nav-section">Gestion</div>
+      <button class="nav-item" onclick="nav('proprietes')">
+        <span class="icon">🌱</span>
+        <span>Mes Propriétés<span class="nav-desc">Parcelles et terrains</span></span>
+      </button>
+      <button class="nav-item" onclick="nav('preneurs')">
+        <span class="icon">👤</span>
+        <span>Preneurs de bail<span class="nav-desc">Locataires agricoles</span></span>
+      </button>
+      <div class="nav-section">Config</div>
+      <button class="nav-item" onclick="nav('parametres')">
+        <span class="icon">⚙️</span>
+        <span>Paramètres<span class="nav-desc">Indices et informations</span></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h2 id="topbar-title">Tableau de bord</h2>
+        <p id="topbar-subtitle"></p>
+      </div>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- MODAL PROPRIÉTÉ -->
+<div class="modal-backdrop" id="modal-prop" onclick="if(event.target===this)closeModal('prop')">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h3 id="modal-prop-title">Nouvelle propriété</h3>
+      <button class="modal-close" onclick="closeModal('prop')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Désignation <span class="help" data-tip="Nom ou libellé de la parcelle.">?</span></label><input id="p-nom" placeholder="Ex: Les Grands Prés"></div>
+      <div class="form-group"><label>Surface (ha) <span class="help" data-tip="Surface totale en hectares.">?</span></label><input id="p-surface" type="number" step="0.01" placeholder="12.50"></div>
+    </div>
+    <div class="form-group form-full"><label>Adresse</label><input id="p-adresse" placeholder="Lieu-dit, commune..."></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Code postal</label><input id="p-cp" placeholder="71000"></div>
+      <div class="form-group"><label>Ville</label><input id="p-ville" placeholder="Mâcon"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Latitude GPS <span class="help" data-tip="Coordonnée GPS (ex: 46.3061).">?</span></label><input id="p-lat" type="number" step="0.000001" placeholder="46.3061"></div>
+      <div class="form-group"><label>Longitude GPS</label><input id="p-lng" type="number" step="0.000001" placeholder="4.8283"></div>
+    </div>
+    <div class="form-group form-full">
+      <label>Montant de fermage annuel de base (€) <span class="help" data-tip="Montant annuel de référence. Modifiable uniquement si aucune facture n'a encore été émise pour cette propriété.">?</span></label>
+      <input id="p-montant" type="number" step="0.01" placeholder="5000.00">
+      <span id="p-montant-warn" style="font-size:11px;color:#a32d2d;display:none;">⚠ Des factures existent — montant en lecture seule.</span>
+    </div>
+    <div class="form-group form-full"><label>Référence cadastrale <span class="help" data-tip="Section et numéro de parcelle cadastrale.">?</span></label><input id="p-cadastre" placeholder="AB 0042"></div>
+    <div class="form-group form-full"><label>Notes</label><input id="p-notes" placeholder="Informations complémentaires..."></div>
+    <div style="border-top:1px solid #d3d1c7;margin:16px 0 12px;padding-top:14px;">
+      <div style="font-size:11px;font-weight:700;color:#888780;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Bail</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Preneur de bail <span class="help" data-tip="Une propriété ne peut être attribuée qu'à un seul preneur.">?</span></label>
+          <select id="p-preneur" style="padding:9px 12px;border:1px solid #d3d1c7;border-radius:6px;font-size:13px;font-family:inherit;background:#fafaf8;">
+            <option value="">— Aucun —</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('prop')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveProp()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRENEUR -->
+<div class="modal-backdrop" id="modal-preneur" onclick="if(event.target===this)closeModal('preneur')">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h3 id="modal-preneur-title">Nouveau preneur de bail</h3>
+      <button class="modal-close" onclick="closeModal('preneur')">×</button>
+    </div>
+    <div class="form-section"><div class="form-section-title">Identité professionnelle</div></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Raison sociale <span class="help" data-tip="Dénomination légale de l'exploitant ou de la société.">?</span></label><input id="pr-rs" placeholder="GAEC Dupont et Fils"></div>
+      <div class="form-group"><label>Forme juridique <span class="help" data-tip="Ex: EARL, GAEC, SCEA, Agriculteur individuel...">?</span></label>
+        <select id="pr-forme">
+          <option value="">— Sélectionner —</option>
+          <option>Agriculteur individuel</option>
+          <option>EARL</option><option>GAEC</option><option>SCEA</option>
+          <option>SAS</option><option>SARL</option><option>SA</option><option>Autre</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nom</label><input id="pr-nom" placeholder="Dupont"></div>
+      <div class="form-group"><label>Prénom</label><input id="pr-prenom" placeholder="Jean"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>SIRET <span class="help" data-tip="14 chiffres identifiant l'établissement.">?</span></label><input id="pr-siret" placeholder="123 456 789 00012"></div>
+      <div class="form-group"><label>N° TVA intracommunautaire <span class="help" data-tip="FR + 11 chiffres. Laisser vide si non assujetti.">?</span></label><input id="pr-tva" placeholder="FR12345678901"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>N° MSA <span class="help" data-tip="Numéro d'affiliation à la Mutualité Sociale Agricole.">?</span></label><input id="pr-msa" placeholder=""></div>
+      <div class="form-group"><label>Code APE/NAF <span class="help" data-tip="Code d'activité principale exercée.">?</span></label><input id="pr-naf" placeholder="0111Z"></div>
+    </div>
+
+    <div class="form-section"><div class="form-section-title">Coordonnées</div></div>
+    <div class="form-group form-full"><label>Adresse</label><input id="pr-adr" placeholder="12 chemin des Champs"></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Code postal</label><input id="pr-cp" placeholder="71000"></div>
+      <div class="form-group"><label>Ville</label><input id="pr-ville" placeholder="Mâcon"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Téléphone</label><input id="pr-tel" placeholder="06 00 00 00 00"></div>
+      <div class="form-group"><label>Email</label><input id="pr-email" type="email" placeholder="contact@gaec.fr"></div>
+    </div>
+
+    <div class="form-section"><div class="form-section-title">Facturation</div></div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Mode de facturation <span class="help" data-tip="Groupé: une seule facture pour toutes les propriétés. Individuel: une facture par propriété.">?</span></label>
+        <select id="pr-mode">
+          <option value="groupe">Groupé (toutes propriétés)</option>
+          <option value="individuel">Individuel (par propriété)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-section-title" style="margin-bottom:8px;">Planning annuel <span class="help" data-tip="Définissez les échéances de paiement. Chaque ligne représente un appel de fonds (acompte ou solde).">?</span></div>
+    <div id="planning-items"></div>
+    <button class="btn btn-sm" onclick="addPlanningItem()">+ Ajouter une échéance</button>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('preneur')">Annuler</button>
+      <button class="btn btn-primary" onclick="savePreneur()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FACTURE DETAIL -->
+<div class="modal-backdrop" id="modal-facture" onclick="if(event.target===this)closeModal('facture')">
+  <div class="modal-box wide">
+    <div class="modal-head">
+      <h3 id="modal-facture-title">Facture</h3>
+      <button class="modal-close" onclick="closeModal('facture')">×</button>
+    </div>
+    <div id="modal-facture-content"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('facture')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://sql.js.org/dist/sql-wasm.js"></script>
+<script>
+/* ================================================================
+   SQLITE DB INITIALIZATION
+================================================================ */
+let db = null;
+
+async function initDB() {
+  const SQL = await initSqlJs({
+    locateFile: file => `https://sql.js.org/dist/${file}`
+  });
+  
+  // Chercher une DB existante en localStorage
+  const saved = localStorage.getItem('fermage_sqlite_data');
+  if (saved) {
+    const buffer = new Uint8Array(JSON.parse(saved));
+    db = new SQL.Database(buffer);
+  } else {
+    db = new SQL.Database();
+  }
+  
+  createTables();
+  render();
+}
+
+function createTables() {
+  db.run(`CREATE TABLE IF NOT EXISTS proprietes (
+    id TEXT PRIMARY KEY,
+    nom TEXT,
+    surface REAL,
+    adresse TEXT,
+    cp TEXT,
+    ville TEXT,
+    lat REAL,
+    lng REAL,
+    cadastre TEXT,
+    notes TEXT,
+    preneurId TEXT,
+    montant REAL
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS preneurs (
+    id TEXT PRIMARY KEY,
+    raisonSociale TEXT,
+    forme TEXT,
+    nom TEXT,
+    prenom TEXT,
+    siret TEXT,
+    tva TEXT,
+    msa TEXT,
+    naf TEXT,
+    adr TEXT,
+    cp TEXT,
+    ville TEXT,
+    tel TEXT,
+    email TEXT,
+    mode TEXT,
+    planning TEXT
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS factures (
+    id TEXT PRIMARY KEY,
+    annee INTEGER,
+    preneurId TEXT,
+    propId TEXT,
+    stepId TEXT,
+    libelle TEXT,
+    mois INTEGER,
+    type TEXT,
+    lignes TEXT,
+    adjustments TEXT,
+    indemnites TEXT,
+    montantTotal REAL,
+    paid INTEGER,
+    datePaiement TEXT
+  )`);
+
+  db.run(`CREATE TABLE IF NOT EXISTS params (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  )`);
+}
+
+function persist() {
+  const data = db.export();
+  const arr = Array.from(data);
+  localStorage.setItem('fermage_sqlite_data', JSON.stringify(arr));
+}
+
+function getParams() {
+  const result = db.exec('SELECT * FROM params');
+  const params = { raisonSociale: 'Votre nom', siret: '', adresse: '', email: '', tel: '', indices: {} };
+  if (result.length && result[0].values.length) {
+    result[0].values.forEach(row => {
+      const key = row[0];
+      const val = row[1];
+      if (key === 'indices') {
+        params.indices = JSON.parse(val || '{}');
+      } else {
+        params[key] = val;
+      }
+    });
+  }
+  return params;
+}
+
+function getProprietes() {
+  const result = db.exec('SELECT * FROM proprietes');
+  if (!result.length) return [];
+  return result[0].values.map(row => ({
+    id: row[0], nom: row[1], surface: row[2], adresse: row[3], cp: row[4],
+    ville: row[5], lat: row[6], lng: row[7], cadastre: row[8], notes: row[9],
+    preneurId: row[10], montant: row[11]
+  }));
+}
+
+function getPreneurs() {
+  const result = db.exec('SELECT * FROM preneurs');
+  if (!result.length) return [];
+  return result[0].values.map(row => ({
+    id: row[0], raisonSociale: row[1], forme: row[2], nom: row[3], prenom: row[4],
+    siret: row[5], tva: row[6], msa: row[7], naf: row[8], adr: row[9], cp: row[10],
+    ville: row[11], tel: row[12], email: row[13], mode: row[14],
+    planning: row[15] ? JSON.parse(row[15]) : []
+  }));
+}
+
+function getFactures() {
+  const result = db.exec('SELECT * FROM factures');
+  if (!result.length) return [];
+  return result[0].values.map(row => ({
+    id: row[0], annee: row[1], preneurId: row[2], propId: row[3], stepId: row[4],
+    libelle: row[5], mois: row[6], type: row[7], lignes: row[8] ? JSON.parse(row[8]) : [],
+    adjustments: row[9] ? JSON.parse(row[9]) : [], indemnites: row[10] ? JSON.parse(row[10]) : [],
+    montantTotal: row[11], paid: row[12] === 1, datePaiement: row[13]
+  }));
+}
+
+function uid() { return Math.random().toString(36).slice(2,10); }
+
+/* ================================================================
+   DATA HELPERS
+================================================================ */
+function getProp(id) {
+  const props = getProprietes();
+  return props.find(p => p.id === id);
+}
+
+function getPreneur(id) {
+  const preneurs = getPreneurs();
+  return preneurs.find(p => p.id === id);
+}
+
+function getPreneurProps(preneurId) {
+  const props = getProprietes();
+  return props
+    .filter(p => p.preneurId === preneurId)
+    .map(p => ({ attr: { propId: p.id }, prop: p }));
+}
+
+function hasFact(propId) {
+  const facts = getFactures();
+  return facts.some(f => (f.lignes||[]).some(l => l.propId === propId));
+}
+
+function getBaseRef(propId, annee) {
+  const facts = getFactures();
+  const anneePrec = annee - 1;
+  const params = getParams();
+  const factSoldePrec = facts.find(f =>
+    f.annee === anneePrec && f.type === 'solde' &&
+    (f.lignes||[]).some(l => l.propId === propId)
+  );
+  if (factSoldePrec) {
+    const ligne = factSoldePrec.lignes.find(l => l.propId === propId);
+    const basePrec = ligne?.montantBaseRef || 0;
+    const indicePrec = (params.indices?.[anneePrec]) || 0;
+    return Math.round(basePrec * (1 + indicePrec / 100) * 100) / 100;
+  }
+  return getProp(propId)?.montant || 0;
+}
+
+function getMontantProp(propId, annee) {
+  const params = getParams();
+  const base = getBaseRef(propId, annee);
+  const indice = (params.indices?.[annee]) || 0;
+  return Math.round(base * (1 + indice / 100) * 100) / 100;
+}
+
+function moisLabel(m) {
+  const labels = ['','Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  return labels[m] || '';
+}
+
+const MOIS_OPTIONS = [1,2,3,4,5,6,7,8,9,10,11,12].map(m => `<option value="${m}">${moisLabel(m)}</option>`).join('');
+
+/* ================================================================
+   NAVIGATION & RENDER
+================================================================ */
+let currentView = 'dashboard';
+
+function nav(view) {
+  currentView = view;
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  const map = {
+    dashboard:  ['Tableau de bord',  'Vue d\'ensemble de vos baux et paiements'],
+    factures:   ['Facturation',       'Générez et suivez vos appels de fonds'],
+    proprietes: ['Mes Propriétés',    'Gérez vos parcelles et terrains agricoles'],
+    preneurs:   ['Preneurs de bail',  'Gérez vos locataires agricoles et leurs contrats'],
+    parametres: ['Paramètres',        'Configurez vos indices de fermage et vos informations']
+  };
+  document.querySelectorAll('.nav-item').forEach(b => {
+    if (b.getAttribute('onclick') === `nav('${view}')`) b.classList.add('active');
+  });
+  document.getElementById('topbar-title').textContent = map[view]?.[0] || '';
+  document.getElementById('topbar-subtitle').textContent = map[view]?.[1] || '';
+  render();
+}
+
+function openModal(id)  { document.getElementById('modal-'+id).classList.add('open'); }
+function closeModal(id) { document.getElementById('modal-'+id).classList.remove('open'); }
+
+function render() {
+  const actions = document.getElementById('topbar-actions');
+  actions.innerHTML = '';
+  const c = document.getElementById('content');
+  if (currentView === 'dashboard')   { renderDashboard(c); }
+  if (currentView === 'factures')    { renderFactures(c, actions); }
+  if (currentView === 'proprietes')  { renderProprietes(c, actions); }
+  if (currentView === 'preneurs')    { renderPreneurs(c, actions); }
+  if (currentView === 'parametres')  { renderParametres(c); }
+}
+
+/* ── DASHBOARD ───────────────────────────────────────────────── */
+function renderDashboard(c) {
+  const proprietes = getProprietes();
+  const preneurs = getPreneurs();
+  const factures = getFactures();
+  const nbProps    = proprietes.length;
+  const nbPreneurs = preneurs.length;
+  const due   = factures.filter(f => !f.paid).reduce((s,f) => s + (f.montantTotal||0), 0);
+  const encai = factures.filter(f =>  f.paid).reduce((s,f) => s + (f.montantTotal||0), 0);
+
+  const steps = [
+    { label: '1. Mes informations', done: true, link: "nav('parametres')" },
+    { label: '2. Mes propriétés', done: nbProps > 0, link: "nav('proprietes')" },
+    { label: '3. Mes preneurs', done: nbPreneurs > 0, link: "nav('preneurs')" },
+    { label: '4. Générer les factures', done: factures.length > 0, link: "nav('factures')" }
+  ];
+  const allDone = steps.every(s => s.done);
+  const currentStep = steps.findIndex(s => !s.done);
+
+  let guideHtml = '';
+  if (!allDone) {
+    const nextStep = steps.find(s => !s.done);
+    guideHtml = `<div class="info-block info-blue" style="margin-bottom:20px;">
+      <div class="ib-icon">👋</div>
+      <div class="ib-text">
+        <strong>Bienvenue ! Voici comment démarrer en 4 étapes simples :</strong>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+          ${steps.map((s,i) => `
+            <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:600;
+              background:${s.done?'#d4edda':i===currentStep?'#faeeda':'#f0ede8'};
+              color:${s.done?'#155724':i===currentStep?'#854f0b':'#888780'};
+              border:2px solid ${s.done?'#a8d48a':i===currentStep?'#f0c060':'#d3d1c7'};">
+              ${s.done ? '✅' : i===currentStep ? '👉' : '○'} ${s.label}
+            </div>`).join('')}
+        </div>
+        ${nextStep ? `<div style="margin-top:10px;"><button class="btn btn-primary btn-sm" onclick="${nextStep.link}">➡️ Commencer : ${nextStep.label}</button></div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  let factRows = '';
+  const pending = factures.filter(f => !f.paid).slice(0, 6);
+  if (pending.length) {
+    pending.forEach(f => {
+      const pr = getPreneur(f.preneurId);
+      const propNames = (f.lignes||[]).map(l=>l.nomProp).filter(Boolean).join(', ');
+      factRows += `<tr>
+        <td><strong style="font-size:15px;">${f.annee}</strong></td>
+        <td><strong>${f.libelle}</strong><br><span style="font-size:12px;color:#888780;">${moisLabel(f.mois)}</span></td>
+        <td>${pr ? `<strong>${pr.raisonSociale||pr.nom}</strong>` : '—'}${propNames ? `<br><span style="font-size:12px;color:#854f0b;">🌱 ${propNames}</span>` : ''}</td>
+        <td><strong style="font-size:16px;color:#854f0b;">${(f.montantTotal||0).toFixed(2)} €</strong></td>
+        <td><span class="badge badge-orange">⏳ Non payé</span></td>
+        <td><div class="btn-group">
+          <button class="btn btn-sm" onclick="openFactureDetail('${f.id}')">📄 Voir</button>
+          <button class="btn btn-sm btn-success" onclick="toggleFactPaid('${f.id}')">✅ Payé</button>
+        </div></td>
+      </tr>`;
+    });
+  } else if (nbProps > 0 && nbPreneurs > 0) {
+    factRows = `<tr><td colspan="6"><div class="empty-state" style="padding:24px 0;">
+      <div class="es-icon">✅</div>
+      <h3>Tout est à jour !</h3>
+      <p>Aucune facture en attente. <button class="btn btn-primary btn-sm" onclick="nav('factures')">Générer les factures de l'année</button></p>
+    </div></td></tr>`;
+  }
+
+  c.innerHTML = `
+    ${guideHtml}
+    <div class="grid-4">
+      <div class="metric">
+        <div class="metric-icon">🌱</div>
+        <div class="metric-label">Propriétés</div>
+        <div class="metric-value">${nbProps}</div>
+        <div class="metric-sub">parcelles enregistrées</div>
+      </div>
+      <div class="metric">
+        <div class="metric-icon">👤</div>
+        <div class="metric-label">Preneurs de bail</div>
+        <div class="metric-value">${nbPreneurs}</div>
+        <div class="metric-sub">locataires agricoles</div>
+      </div>
+      <div class="metric">
+        <div class="metric-icon">⏳</div>
+        <div class="metric-label">Reste à encaisser</div>
+        <div class="metric-value" style="color:#854f0b;">${due.toFixed(2)} €</div>
+        <div class="metric-sub">${factures.filter(f=>!f.paid).length} facture(s) en attente</div>
+      </div>
+      <div class="metric">
+        <div class="metric-icon">✅</div>
+        <div class="metric-label">Déjà encaissé</div>
+        <div class="metric-value" style="color:#27500a;">${encai.toFixed(2)} €</div>
+        <div class="metric-sub">${factures.filter(f=>f.paid).length} facture(s) réglée(s)</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">⏳ Factures en attente de paiement</div>
+          <div class="card-subtitle">Cliquez sur "Payé" dès que vous avez reçu le règlement</div>
+        </div>
+      </div>
+      ${pending.length || (nbProps > 0 && nbPreneurs > 0) ? `<div class="table-wrap"><table>
+        <tr><th>Année</th><th>Libellé</th><th>Preneur / Propriété</th><th>Montant</th><th>Statut</th><th>Action</th></tr>
+        ${factRows}
+      </table></div>` : `<div class="empty-state"><div class="es-icon">📋</div><h3>Aucune facture pour l'instant</h3><p>Commencez par enregistrer vos propriétés et vos preneurs de bail.</p></div>`}
+    </div>`;
+}
+
+/* ── PROPRIÉTÉS ──────────────────────────────────────────────── */
+function renderProprietes(c, actions) {
+  actions.innerHTML = `<button class="btn btn-primary" onclick="openPropModal()">🌱 Nouvelle propriété</button>`;
+
+  const proprietes = getProprietes();
+  if (!proprietes.length) {
+    c.innerHTML = `
+      <div class="info-block info-blue">
+        <div class="ib-icon">💡</div>
+        <div class="ib-text">
+          <strong>Qu'est-ce qu'une propriété ?</strong>
+          <span>C'est une parcelle ou un terrain agricole que vous louez à un preneur de bail. Pour chaque propriété, vous définirez sa surface, son adresse, son loyer annuel de base, et le preneur qui l'exploite.</span>
+        </div>
+      </div>
+      <div class="card"><div class="empty-state">
+        <div class="es-icon">🌾</div>
+        <h3>Aucune propriété enregistrée</h3>
+        <p>Commencez par ajouter vos parcelles agricoles. Vous pourrez ensuite les attribuer à vos preneurs de bail.</p>
+        <button class="btn btn-primary" onclick="openPropModal()">🌱 Ajouter ma première propriété</button>
+      </div></div>`;
+    return;
+  }
+
+  let rows = '';
+  proprietes.forEach(p => {
+    const preneur = p.preneurId ? getPreneur(p.preneurId) : null;
+    rows += `<tr>
+      <td>
+        <strong style="font-size:15px;">🌱 ${p.nom}</strong>
+        ${p.cadastre ? `<br><span style="font-size:12px;color:#888780;">Réf. cadastrale : ${p.cadastre}</span>` : ''}
+      </td>
+      <td>${p.surface ? `<strong>${p.surface}</strong> ha` : '<span style="color:#888780;">—</span>'}</td>
+      <td style="font-size:13px;">${p.adresse ? `${p.adresse}<br>${p.cp||''} ${p.ville||''}` : '<span style="color:#888780;">Non renseignée</span>'}</td>
+      <td>${p.lat && p.lng ? `<span style="font-size:12px;font-family:monospace;background:#f0ede8;padding:2px 6px;border-radius:4px;">${p.lat}, ${p.lng}</span>` : '<span style="color:#888780;">—</span>'}</td>
+      <td><strong style="font-size:15px;color:#854f0b;">${p.montant ? p.montant.toFixed(2)+' €/an' : '<span style="color:#a32d2d;">Non défini</span>'}</strong></td>
+      <td>${preneur
+        ? `<span class="badge badge-green">👤 ${preneur.raisonSociale||preneur.nom}</span>`
+        : `<span class="badge badge-red">⚠️ Non attribué</span>`}</td>
+      <td><div class="btn-group">
+        <button class="btn btn-sm" onclick="openPropModal('${p.id}')">✏️ Modifier</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteProp('${p.id}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  });
+
+  c.innerHTML = `
+    <div class="info-block info-orange">
+      <div class="ib-icon">ℹ️</div>
+      <div class="ib-text">
+        <strong>Conseil :</strong>
+        <span>Le montant annuel de base ne peut plus être modifié une fois qu'une facture a été générée pour cette propriété. Vérifiez-le avant de générer les factures.</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="table-wrap"><table>
+        <tr><th>Désignation</th><th>Surface</th><th>Adresse</th><th>GPS</th><th>Fermage/an</th><th>Preneur attribué</th><th>Actions</th></tr>
+        ${rows}
+      </table></div>
+    </div>`;
+}
+
+/* ── PRENEURS ────────────────────────────────────────────────── */
+function renderPreneurs(c, actions) {
+  actions.innerHTML = `<button class="btn btn-primary" onclick="openPreneurModal()">👤 Nouveau preneur de bail</button>`;
+
+  const preneurs = getPreneurs();
+  const proprietes = getProprietes();
+  if (!preneurs.length) {
+    c.innerHTML = `
+      <div class="info-block info-blue">
+        <div class="ib-icon">💡</div>
+        <div class="ib-text">
+          <strong>Qu'est-ce qu'un preneur de bail ?</strong>
+          <span>C'est l'agriculteur ou la société agricole qui loue vos terres. Vous pouvez renseigner toutes ses informations professionnelles (SIRET, TVA, etc.) nécessaires pour établir des factures légales.</span>
+        </div>
+      </div>
+      <div class="card"><div class="empty-state">
+        <div class="es-icon">👤</div>
+        <h3>Aucun preneur de bail enregistré</h3>
+        <p>Ajoutez les agriculteurs ou sociétés qui exploitent vos terres. Vous pourrez ensuite définir leur calendrier de paiement.</p>
+        <button class="btn btn-primary" onclick="openPreneurModal()">👤 Ajouter mon premier preneur</button>
+      </div></div>`;
+    return;
+  }
+
+  let rows = '';
+  preneurs.forEach(pr => {
+    const props = proprietes.filter(p => p.preneurId === pr.id);
+    const mode = pr.mode === 'individuel' ? '📄 Facture par propriété' : '📋 Facture groupée';
+    const nbEcheances = (pr.planning||[]).length;
+    rows += `<tr>
+      <td>
+        <strong style="font-size:15px;">${pr.raisonSociale||pr.nom||'—'}</strong>
+        ${pr.forme ? `<br><span class="badge badge-gray" style="margin-top:4px;">${pr.forme}</span>` : ''}
+        ${pr.siret ? `<br><span style="font-size:12px;color:#888780;margin-top:2px;">SIRET : ${pr.siret}</span>` : ''}
+      </td>
+      <td>
+        ${pr.email ? `📧 ${pr.email}<br>` : ''}
+        ${pr.tel ? `📞 ${pr.tel}` : ''}
+        ${!pr.email && !pr.tel ? '<span style="color:#888780;">—</span>' : ''}
+      </td>
+      <td>
+        ${props.length
+          ? props.map(p => `<span class="badge badge-orange" style="margin:2px;">🌱 ${p.nom}</span>`).join('')
+          : `<span class="badge badge-red">⚠️ Aucune propriété</span>`}
+      </td>
+      <td>
+        <span class="badge badge-blue">${mode}</span>
+        <br><span style="font-size:12px;color:#888780;margin-top:4px;">${nbEcheances} échéance(s)/an</span>
+      </td>
+      <td><div class="btn-group">
+        <button class="btn btn-sm" onclick="openPreneurModal('${pr.id}')">✏️ Modifier</button>
+        <button class="btn btn-sm btn-danger" onclick="deletePreneur('${pr.id}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  });
+
+  c.innerHTML = `<div class="card">
+    <div class="table-wrap"><table>
+      <tr><th>Identité</th><th>Contact</th><th>Propriétés attribuées</th><th>Mode de facturation</th><th>Actions</th></tr>
+      ${rows}
+    </table></div>
+  </div>`;
+}
+
+/* ── FACTURATION ─────────────────────────────────────────────── */
+let factFiltreStatut = 'tous';
+let factFiltrePreneur = '';
+let factFiltreProp = '';
+let factFiltreAnnee = '';
+
+function renderFactures(c, actions) {
+  const anneeEnCours = new Date().getFullYear();
+  const factures = getFactures();
+  const preneurs = getPreneurs();
+  const proprietes = getProprietes();
+  
+  actions.innerHTML = `<button class="btn btn-primary" onclick="genererFactures()">⚡ Générer ${anneeEnCours}</button>`;
+
+  const anneesDispos = [...new Set(factures.map(f => f.annee))].sort((a,b) => b-a);
+  const anneeOpts = anneesDispos.map(y =>
+    `<option value="${y}" ${factFiltreAnnee==y?'selected':''}>${y}${y==anneeEnCours?' (en cours)':''}</option>`
+  ).join('');
+
+  const preneurOpts = preneurs.map(pr =>
+    `<option value="${pr.id}" ${factFiltrePreneur===pr.id?'selected':''}>${pr.raisonSociale||pr.nom}</option>`
+  ).join('');
+  const propOpts = proprietes.map(p =>
+    `<option value="${p.id}" ${factFiltreProp===p.id?'selected':''}>${p.nom}</option>`
+  ).join('');
+
+  const hasFiltre = factFiltreStatut!=='tous' || factFiltrePreneur || factFiltreProp || factFiltreAnnee;
+
+  c.innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px;padding:14px 16px;background:white;border:1px solid #e0ddd8;border-radius:10px;">
+      <span style="font-weight:700;font-size:13px;color:#888780;">🔍 FILTRES</span>
+      <select onchange="factFiltreAnnee=this.value;render()" style="padding:8px 12px;border:2px solid #d3d1c7;border-radius:6px;font-size:13px;font-family:inherit;">
+        <option value="">Toutes les années</option>
+        ${anneeOpts}
+      </select>
+      <select onchange="factFiltreStatut=this.value;render()" style="padding:8px 12px;border:2px solid #d3d1c7;border-radius:6px;font-size:13px;font-family:inherit;">
+        <option value="tous" ${factFiltreStatut==='tous'?'selected':''}>Tous les statuts</option>
+        <option value="impaye" ${factFiltreStatut==='impaye'?'selected':''}>⏳ Non payé</option>
+        <option value="paye" ${factFiltreStatut==='paye'?'selected':''}>✅ Payé</option>
+      </select>
+      <select onchange="factFiltrePreneur=this.value;render()" style="padding:8px 12px;border:2px solid #d3d1c7;border-radius:6px;font-size:13px;font-family:inherit;">
+        <option value="">Tous les preneurs</option>
+        ${preneurOpts}
+      </select>
+      <select onchange="factFiltreProp=this.value;render()" style="padding:8px 12px;border:2px solid #d3d1c7;border-radius:6px;font-size:13px;font-family:inherit;">
+        <option value="">Toutes les propriétés</option>
+        ${propOpts}
+      </select>
+      ${hasFiltre ? `<button class="btn btn-sm" onclick="factFiltreStatut='tous';factFiltrePreneur='';factFiltreProp='';factFiltreAnnee='';render()">✕ Effacer</button>` : ''}
+    </div>`;
+
+  let facts = factures.slice();
+  if (factFiltreAnnee)   facts = facts.filter(f => f.annee == factFiltreAnnee);
+  if (factFiltreStatut === 'paye')   facts = facts.filter(f => f.paid);
+  if (factFiltreStatut === 'impaye') facts = facts.filter(f => !f.paid);
+  if (factFiltrePreneur) facts = facts.filter(f => f.preneurId === factFiltrePreneur);
+  if (factFiltreProp)    facts = facts.filter(f => (f.lignes||[]).some(l => l.propId === factFiltreProp));
+
+  if (!facts.length) {
+    c.innerHTML += `<div class="card"><div class="empty-state">
+      <div class="es-icon">🧾</div>
+      <h3>${factures.length === 0 ? 'Aucune facture générée' : 'Aucun résultat'}</h3>
+      <p>${factures.length === 0
+        ? `Cliquez sur "⚡ Générer ${anneeEnCours}" pour créer les factures de cette année.`
+        : 'Modifiez les filtres pour voir plus de résultats.'}</p>
+    </div></div>`;
+    return;
+  }
+
+  facts.sort((a,b) => b.annee - a.annee || a.mois - b.mois);
+  const byAnnee = {};
+  facts.forEach(f => {
+    if (!byAnnee[f.annee]) byAnnee[f.annee] = {};
+    if (!byAnnee[f.annee][f.preneurId]) byAnnee[f.annee][f.preneurId] = [];
+    byAnnee[f.annee][f.preneurId].push(f);
+  });
+
+  const mkCard = (f) => {
+    const propNames = (f.lignes||[]).map(l => l.nomProp).filter(Boolean);
+    return `<div class="fcard ${f.paid ? 'paid' : ''}">
+      <div class="fcard-title">${f.type === 'acompte' ? '💰' : '📋'} ${f.libelle}</div>
+      <div class="fcard-sub">Échéance : <strong>${moisLabel(f.mois)}</strong></div>
+      ${propNames.length ? `<div class="fcard-prop">🌱 ${propNames.join(' · ')}</div>` : ''}
+      <div class="fcard-amount">${(f.montantTotal||0).toFixed(2)} €</div>
+      <div class="fcard-status" style="color:${f.paid?'#27500a':'#854f0b'};">${f.paid ? '✅ Payé' : '⏳ Non payé'}${f.paid && f.datePaiement ? `<br><span style="font-size:11px;color:#888780;">le ${f.datePaiement}</span>` : ''}</div>
+      <div class="fcard-actions">
+        <button class="btn btn-sm" onclick="openFactureDetail('${f.id}')">📄 Détail</button>
+        <button class="btn btn-sm ${f.paid ? '' : 'btn-success'}" onclick="toggleFactPaid('${f.id}')">${f.paid ? '↩️ Annuler' : '✅ Marquer payé'}</button>
+      </div>
+    </div>`;
+  };
+
+  let html = '';
+  Object.entries(byAnnee).forEach(([annee, byPreneur]) => {
+    const totalAnnee = Object.values(byPreneur).flat().filter(f=>!f.paid).reduce((s,f)=>s+(f.montantTotal||0),0);
+    html += `<div style="display:flex;align-items:center;gap:12px;margin:20px 0 8px;">
+      <div style="background:#854f0b;color:white;border-radius:8px;padding:6px 14px;font-weight:800;font-size:16px;">${annee}</div>
+      ${totalAnnee > 0 ? `<span class="badge badge-orange">⏳ Reste dû : ${totalAnnee.toFixed(2)} €</span>` : '<span class="badge badge-green">✅ Tout payé</span>'}
+      ${annee == anneeEnCours ? '<span class="badge badge-blue">Année en cours</span>' : ''}
+    </div>`;
+
+    Object.entries(byPreneur).forEach(([preneurId, facturesPreneur]) => {
+      const pr = getPreneur(preneurId);
+      const nom = pr ? (pr.raisonSociale||pr.nom) : '—';
+      const totalDu = facturesPreneur.filter(f=>!f.paid).reduce((s,f)=>s+(f.montantTotal||0),0);
+
+      const byProp = {};
+      facturesPreneur.forEach(f => {
+        const key = f.propId || 'groupe';
+        if (!byProp[key]) byProp[key] = [];
+        byProp[key].push(f);
+      });
+
+      let rows = '';
+      Object.entries(byProp).forEach(([propKey, propFacts]) => {
+        const propNom = propKey === 'groupe'
+          ? (propFacts[0]?.lignes||[]).map(l => l.nomProp).join(' + ') || 'Toutes propriétés'
+          : (getProp(propKey)?.nom || propKey);
+        rows += `<div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;color:#854f0b;margin-bottom:6px;">🌱 ${propNom}</div>
+          <div class="facture-row">${propFacts.sort((a,b)=>a.mois-b.mois).map(mkCard).join('')}</div>
+        </div>`;
+      });
+
+      html += `<div class="card" style="margin-bottom:10px;">
+        <div class="card-head">
+          <div class="card-title">👤 ${nom}</div>
+          ${totalDu > 0 ? `<span class="badge badge-orange">Reste dû: ${totalDu.toFixed(2)} €</span>` : '<span class="badge badge-green">Tout payé</span>'}
+        </div>
+        ${rows}
+      </div>`;
+    });
+  });
+
+  c.innerHTML += html;
+}
+
+/* ── PARAMÈTRES ──────────────────────────────────────────────── */
+function renderParametres(c) {
+  const params = getParams();
+  const factures = getFactures();
+  const anneeEnCours = new Date().getFullYear();
+
+  const anneesAvecFactures = [...new Set(factures.map(f => f.annee))];
+  const annees = [...new Set([anneeEnCours, ...anneesAvecFactures])].sort((a,b) => b-a);
+
+  const indicesRows = annees.map(y => {
+    const isEditable = y === anneeEnCours;
+    const hasFactures = factures.some(f => f.annee === y);
+    return `<tr style="${isEditable ? '' : 'opacity:0.7;'}">
+      <td>
+        <strong style="font-size:15px;">${y}</strong>
+        ${isEditable ? `<span class="badge badge-green" style="margin-left:8px;">✏️ Année en cours</span>` : ''}
+        ${hasFactures && !isEditable ? `<span class="badge badge-gray" style="margin-left:8px;">${factures.filter(f=>f.annee===y).length} facture(s)</span>` : ''}
+      </td>
+      <td>
+        ${isEditable
+          ? `<input type="number" step="0.01" value="${params.indices[y] !== undefined ? params.indices[y] : ''}" placeholder="Ex: 2.5"
+              onchange="setIndice(${y}, this.value)"
+              style="padding:10px 12px;border:2px solid #854f0b;border-radius:8px;font-size:14px;width:130px;font-weight:600;">`
+          : `<span style="font-size:14px;font-weight:600;">${params.indices[y] !== undefined ? params.indices[y] + ' %' : '<em style="color:#888780;">Non défini</em>'}</span>`
+        }
+      </td>
+      <td style="font-size:13px;color:#888780;">
+        ${params.indices[y] !== undefined
+          ? `<span style="color:#27500a;">📈 Loyer × ${(1 + params.indices[y]/100).toFixed(4)} <em>(+${params.indices[y]}%)</em></span>`
+          : isEditable ? `<span style="color:#854f0b;">⚠️ À définir avant de générer les factures ${y}</span>` : '—'}
+      </td>
+    </tr>`;
+  }).join('');
+
+  c.innerHTML = `
+    <div class="card">
+      <div class="card-title" style="margin-bottom:16px;">Mes informations (bailleur)</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Nom / Raison sociale</label><input id="my-rs" value="${params.raisonSociale||''}" onchange="saveParams()"></div>
+        <div class="form-group"><label>SIRET</label><input id="my-siret" value="${params.siret||''}" onchange="saveParams()"></div>
+      </div>
+      <div class="form-group form-full" style="margin-bottom:12px;"><label>Adresse complète</label><input id="my-adr" value="${params.adresse||''}" onchange="saveParams()"></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Email</label><input id="my-email" value="${params.email||''}" onchange="saveParams()"></div>
+        <div class="form-group"><label>Téléphone</label><input id="my-tel" value="${params.tel||''}" onchange="saveParams()"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="card-title">Indice de Fermage national
+            <span class="help" data-tip="L'indice de fermage est publié chaque année par arrêté ministériel. Il est appliqué sur le montant de base de chaque propriété lors de la génération des factures annuelles.">?</span>
+          </div>
+          <div class="card-subtitle">Seule l'année en cours est modifiable. Les années passées sont en lecture seule.</div>
+        </div>
+      </div>
+      ${annees.length
+        ? `<div class="table-wrap"><table>
+            <tr><th>Année</th><th>Indice (%)</th><th>Effet sur le loyer</th></tr>
+            ${indicesRows}
+          </table></div>`
+        : `<div class="info-block info-blue"><div class="ib-icon">💡</div><div class="ib-text"><strong>Aucune facture générée</strong><span>L'indice apparaîtra ici une fois que vous aurez généré des factures.</span></div></div>`
+      }
+    </div>
+
+    <div class="card">
+      <button class="btn btn-danger" onclick="if(confirm('Effacer toutes les données ?')){db.run('DELETE FROM proprietes'); db.run('DELETE FROM preneurs'); db.run('DELETE FROM factures'); db.run('DELETE FROM params'); persist(); location.reload();}">🗑️ Réinitialiser toutes les données</button>
+    </div>`;
+}
+
+function setIndice(annee, val) {
+  const params = getParams();
+  if (!params.indices) params.indices = {};
+  const v = parseFloat(val);
+  if (isNaN(v)) delete params.indices[annee];
+  else params.indices[annee] = v;
+  
+  db.run('DELETE FROM params WHERE key = ?', ['indices']);
+  db.run('INSERT INTO params VALUES (?, ?)', ['indices', JSON.stringify(params.indices)]);
+  persist();
+  renderParametres(document.getElementById('content'));
+}
+
+function saveParams() {
+  const params = {
+    raisonSociale: document.getElementById('my-rs').value,
+    siret: document.getElementById('my-siret').value,
+    adresse: document.getElementById('my-adr').value,
+    email: document.getElementById('my-email').value,
+    tel: document.getElementById('my-tel').value
+  };
+  
+  db.run('DELETE FROM params WHERE key != ?', ['indices']);
+  Object.entries(params).forEach(([k, v]) => {
+    db.run('INSERT OR REPLACE INTO params VALUES (?, ?)', [k, v]);
+  });
+  persist();
+}
+
+/* ================================================================
+   CRUD PROPRIÉTÉS
+================================================================ */
+let editPropId = null;
+
+function openPropModal(id) {
+  editPropId = id || null;
+  const p = id ? getProp(id) : null;
+  const preneurs = getPreneurs();
+  
+  document.getElementById('modal-prop-title').textContent = p ? 'Modifier la propriété' : 'Nouvelle propriété';
+  document.getElementById('p-nom').value     = p?.nom     || '';
+  document.getElementById('p-surface').value = p?.surface || '';
+  document.getElementById('p-adresse').value = p?.adresse || '';
+  document.getElementById('p-cp').value      = p?.cp      || '';
+  document.getElementById('p-ville').value   = p?.ville   || '';
+  document.getElementById('p-lat').value     = p?.lat     || '';
+  document.getElementById('p-lng').value     = p?.lng     || '';
+  document.getElementById('p-cadastre').value= p?.cadastre|| '';
+  document.getElementById('p-notes').value   = p?.notes   || '';
+  
+  const hasF = id ? hasFact(id) : false;
+  if (hasF) {
+    const anneeEnCours = new Date().getFullYear();
+    const baseRef = getBaseRef(id, anneeEnCours);
+    document.getElementById('p-montant').value    = baseRef.toFixed(2);
+    document.getElementById('p-montant').readOnly = true;
+    document.getElementById('p-montant').style.background = '#f5f3f0';
+    document.getElementById('p-montant').style.color = '#888780';
+    document.getElementById('p-montant-warn').textContent = `ℹ️ Montant calculé d'après le loyer révisé de ${anneeEnCours - 1} — non modifiable.`;
+    document.getElementById('p-montant-warn').style.display = 'block';
+    document.getElementById('p-montant-warn').style.color = '#888780';
+  } else {
+    document.getElementById('p-montant').value    = p?.montant || '';
+    document.getElementById('p-montant').readOnly = false;
+    document.getElementById('p-montant').style.background = '';
+    document.getElementById('p-montant').style.color = '';
+    document.getElementById('p-montant-warn').style.display = 'none';
+  }
+  
+  const sel = document.getElementById('p-preneur');
+  sel.innerHTML = '<option value="">— Aucun —</option>';
+  preneurs.forEach(pr => {
+    const opt = document.createElement('option');
+    opt.value = pr.id;
+    opt.textContent = pr.raisonSociale || pr.nom;
+    if (p?.preneurId === pr.id) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  openModal('prop');
+}
+
+function saveProp() {
+  const nom = document.getElementById('p-nom').value.trim();
+  if (!nom) { alert('La désignation est requise.'); return; }
+  
+  const montant = parseFloat(document.getElementById('p-montant').value) || null;
+  const preneurId = document.getElementById('p-preneur').value || null;
+  
+  if (editPropId) {
+    db.run('UPDATE proprietes SET nom=?, surface=?, adresse=?, cp=?, ville=?, lat=?, lng=?, cadastre=?, notes=?, preneurId=?' + (!hasFact(editPropId) ? ', montant=?' : '') + ' WHERE id=?',
+      !hasFact(editPropId)
+        ? [nom, parseFloat(document.getElementById('p-surface').value) || null, document.getElementById('p-adresse').value.trim(), document.getElementById('p-cp').value.trim(), document.getElementById('p-ville').value.trim(), parseFloat(document.getElementById('p-lat').value) || null, parseFloat(document.getElementById('p-lng').value) || null, document.getElementById('p-cadastre').value.trim(), document.getElementById('p-notes').value.trim(), preneurId, montant, editPropId]
+        : [nom, parseFloat(document.getElementById('p-surface').value) || null, document.getElementById('p-adresse').value.trim(), document.getElementById('p-cp').value.trim(), document.getElementById('p-ville').value.trim(), parseFloat(document.getElementById('p-lat').value) || null, parseFloat(document.getElementById('p-lng').value) || null, document.getElementById('p-cadastre').value.trim(), document.getElementById('p-notes').value.trim(), preneurId, editPropId]
+    );
+  } else {
+    db.run('INSERT INTO proprietes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [uid(), nom, parseFloat(document.getElementById('p-surface').value) || null, document.getElementById('p-adresse').value.trim(), document.getElementById('p-cp').value.trim(), document.getElementById('p-ville').value.trim(), parseFloat(document.getElementById('p-lat').value) || null, parseFloat(document.getElementById('p-lng').value) || null, document.getElementById('p-cadastre').value.trim(), document.getElementById('p-notes').value.trim(), preneurId, montant]
+    );
+  }
+  persist(); closeModal('prop'); render();
+}
+
+function deleteProp(id) {
+  if (hasFact(id)) { alert('Des factures existent pour cette propriété.'); return; }
+  if (!confirm('Supprimer cette propriété ?')) return;
+  db.run('DELETE FROM proprietes WHERE id=?', [id]);
+  persist(); render();
+}
+
+/* ================================================================
+   CRUD PRENEURS
+================================================================ */
+let editPreneurId = null;
+let tmpPlanning = [];
+
+function openPreneurModal(id) {
+  editPreneurId = id || null;
+  const pr = id ? getPreneur(id) : null;
+  
+  document.getElementById('modal-preneur-title').textContent = pr ? 'Modifier le preneur' : 'Nouveau preneur de bail';
+  document.getElementById('pr-rs').value     = pr?.raisonSociale || '';
+  document.getElementById('pr-forme').value  = pr?.forme  || '';
+  document.getElementById('pr-nom').value    = pr?.nom    || '';
+  document.getElementById('pr-prenom').value = pr?.prenom || '';
+  document.getElementById('pr-siret').value  = pr?.siret  || '';
+  document.getElementById('pr-tva').value    = pr?.tva    || '';
+  document.getElementById('pr-msa').value    = pr?.msa    || '';
+  document.getElementById('pr-naf').value    = pr?.naf    || '';
+  document.getElementById('pr-adr').value    = pr?.adr    || '';
+  document.getElementById('pr-cp').value     = pr?.cp     || '';
+  document.getElementById('pr-ville').value  = pr?.ville  || '';
+  document.getElementById('pr-tel').value    = pr?.tel    || '';
+  document.getElementById('pr-email').value  = pr?.email  || '';
+  document.getElementById('pr-mode').value   = pr?.mode   || 'groupe';
+  
+  tmpPlanning = JSON.parse(JSON.stringify(pr?.planning || [{ id:uid(), mois:5, libelle:'Acompte', type:'acompte', valType:'pct', val:50 }, { id:uid(), mois:11, libelle:'Solde', type:'solde', valType:'pct', val:100 }]));
+  renderPlanningItems();
+  openModal('preneur');
+}
+
+function renderPlanningItems() {
+  const el = document.getElementById('planning-items');
+  el.innerHTML = tmpPlanning.map((it,i) => `
+    <div class="planning-item" id="pi-${it.id}">
+      <select onchange="tmpPlanning[${i}].mois=+this.value">${MOIS_OPTIONS.replace(`value="${it.mois}"`,`value="${it.mois}" selected`)}</select>
+      <input value="${it.libelle}" placeholder="Libellé" style="flex:1;" onchange="tmpPlanning[${i}].libelle=this.value">
+      <select onchange="tmpPlanning[${i}].type=this.value">
+        <option value="acompte" ${it.type==='acompte'?'selected':''}>Acompte</option>
+        <option value="solde"   ${it.type==='solde'  ?'selected':''}>Solde</option>
+      </select>
+      <select onchange="tmpPlanning[${i}].valType=this.value">
+        <option value="pct"  ${it.valType==='pct' ?'selected':''}>%</option>
+        <option value="fixe" ${it.valType==='fixe'?'selected':''}>€ fixe</option>
+      </select>
+      <input type="number" value="${it.val}" style="width:60px;" onchange="tmpPlanning[${i}].val=+this.value">
+      <button onclick="tmpPlanning.splice(${i},1);renderPlanningItems()" style="background:none;border:none;cursor:pointer;color:#a32d2d;font-size:16px;">×</button>
+    </div>`).join('');
+}
+
+function addPlanningItem() {
+  tmpPlanning.push({ id:uid(), mois:5, libelle:'Acompte', type:'acompte', valType:'pct', val:50 });
+  renderPlanningItems();
+}
+
+function savePreneur() {
+  const rs = document.getElementById('pr-rs').value.trim();
+  const nom = document.getElementById('pr-nom').value.trim();
+  if (!rs && !nom) { alert('La raison sociale ou le nom est requis.'); return; }
+  
+  const data = [
+    rs, document.getElementById('pr-forme').value,
+    nom, document.getElementById('pr-prenom').value.trim(),
+    document.getElementById('pr-siret').value.trim(),
+    document.getElementById('pr-tva').value.trim(),
+    document.getElementById('pr-msa').value.trim(),
+    document.getElementById('pr-naf').value.trim(),
+    document.getElementById('pr-adr').value.trim(),
+    document.getElementById('pr-cp').value.trim(),
+    document.getElementById('pr-ville').value.trim(),
+    document.getElementById('pr-tel').value.trim(),
+    document.getElementById('pr-email').value.trim(),
+    document.getElementById('pr-mode').value,
+    JSON.stringify(tmpPlanning)
+  ];
+  
+  if (editPreneurId) {
+    db.run('UPDATE preneurs SET raisonSociale=?, forme=?, nom=?, prenom=?, siret=?, tva=?, msa=?, naf=?, adr=?, cp=?, ville=?, tel=?, email=?, mode=?, planning=? WHERE id=?',
+      [...data, editPreneurId]);
+  } else {
+    db.run('INSERT INTO preneurs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [uid(), ...data]);
+  }
+  persist(); closeModal('preneur'); render();
+}
+
+function deletePreneur(id) {
+  if (!confirm('Supprimer ce preneur ?')) return;
+  db.run('DELETE FROM preneurs WHERE id=?', [id]);
+  db.run('DELETE FROM factures WHERE preneurId=?', [id]);
+  persist(); render();
+}
+
+/* ================================================================
+   FACTURATION
+================================================================ */
+function genererFactures() {
+  const annee = new Date().getFullYear();
+  const preneurs = getPreneurs();
+  const proprietes = getProprietes();
+  const params = getParams();
+  
+  if (!preneurs.length) { alert('Aucun preneur de bail configuré.'); return; }
+  if (!confirm(`Mettre à jour les factures pour ${annee} ?\n\nLes montants seront recalculés.`)) return;
+
+  let created = 0, updated = 0;
+  let errors = [];
+
+  preneurs.forEach(pr => {
+    const props = proprietes.filter(p => p.preneurId === pr.id);
+    if (!props.length) { errors.push(`${pr.raisonSociale||pr.nom} : aucune propriété attribuée`); return; }
+    const planning = pr.planning || [];
+    if (!planning.length) { errors.push(`${pr.raisonSociale||pr.nom} : aucun planning de paiement`); return; }
+
+    const totauxBase = {};
+    const totauxAvecIndice = {};
+    props.forEach(prop => {
+      totauxBase[prop.id] = getBaseRef(prop.id, annee);
+      totauxAvecIndice[prop.id] = getMontantProp(prop.id, annee);
+    });
+
+    const factCettePasse = [];
+
+    planning.forEach(step => {
+      const calcLignesIndividuel = (prop) => {
+        const baseRef = totauxBase[prop.id];
+        const baseAvecIndice = totauxAvecIndice[prop.id];
+        let montant = 0;
+        if (step.type === 'acompte') {
+          montant = step.valType === 'pct' ? Math.round(baseRef * step.val / 100 * 100)/100 : step.val;
+        } else {
+          const acomptesExist = factCettePasse
+            .filter(f => f.type === 'acompte')
+            .reduce((s,f) => s + (f.lignes||[]).filter(l=>l.propId===prop.id).reduce((ss,l)=>ss+l.montant,0), 0);
+          montant = Math.round((baseAvecIndice - acomptesExist) * 100) / 100;
+        }
+        return { propId: prop.id, nomProp: prop.nom, montantBaseRef: baseRef, base: baseRef, montant };
+      };
+
+      if (pr.mode === 'individuel') {
+        props.forEach(prop => {
+          const ligne = calcLignesIndividuel(prop);
+          const existing = db.exec('SELECT * FROM factures WHERE annee=? AND preneurId=? AND stepId=? AND propId=?',
+            [annee, pr.id, step.id, prop.id]);
+          
+          const id = existing.length ? existing[0].values[0][0] : uid();
+          const sql = existing.length
+            ? 'UPDATE factures SET lignes=?, montantTotal=?, libelle=?, mois=? WHERE id=?'
+            : 'INSERT INTO factures VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+          const vals = existing.length
+            ? [JSON.stringify([ligne]), ligne.montant, step.libelle, step.mois, id]
+            : [id, annee, pr.id, prop.id, step.id, step.libelle, step.mois, step.type, JSON.stringify([ligne]), '[]', '[]', ligne.montant, 0, null];
+          
+          db.run(sql, vals);
+          if (!existing.length) created++;
+          else updated++;
+          factCettePasse.push({ type: step.type, lignes: [ligne] });
+        });
+        return;
+      }
+
+      const lignes = props.map(prop => {
+        const baseRef = totauxBase[prop.id];
+        const baseAvecIndice = totauxAvecIndice[prop.id];
+        let montant = 0;
+        if (step.type === 'acompte') {
+          montant = step.valType === 'pct' ? Math.round(baseRef * step.val / 100 * 100)/100 : step.val;
+        } else {
+          const acomptesExist = factCettePasse
+            .filter(f => f.type === 'acompte')
+            .reduce((s,f) => s + (f.lignes||[]).filter(l=>l.propId===prop.id).reduce((ss,l)=>ss+l.montant,0), 0);
+          montant = Math.round((baseAvecIndice - acomptesExist) * 100) / 100;
+        }
+        return { propId: prop.id, nomProp: prop.nom, montantBaseRef: baseRef, base: baseRef, montant };
+      });
+      const montantTotal = Math.round(lignes.reduce((s,l) => s+l.montant, 0) * 100) / 100;
+
+      const existing = db.exec('SELECT * FROM factures WHERE annee=? AND preneurId=? AND stepId=? AND propId IS NULL',
+        [annee, pr.id, step.id]);
+      
+      const id = existing.length ? existing[0].values[0][0] : uid();
+      const sql = existing.length
+        ? 'UPDATE factures SET lignes=?, montantTotal=?, libelle=?, mois=? WHERE id=?'
+        : 'INSERT INTO factures VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+      const vals = existing.length
+        ? [JSON.stringify(lignes), montantTotal, step.libelle, step.mois, id]
+        : [id, annee, pr.id, null, step.id, step.libelle, step.mois, step.type, JSON.stringify(lignes), '[]', '[]', montantTotal, 0, null];
+      
+      db.run(sql, vals);
+      if (!existing.length) created++;
+      else updated++;
+      factCettePasse.push({ type: step.type, lignes });
+    });
+  });
+
+  persist();
+  if (errors.length) {
+    alert('⚠️ Problèmes :\n\n' + errors.join('\n'));
+  } else {
+    const msg = [];
+    if (created > 0) msg.push(`${created} créée(s)`);
+    if (updated > 0) msg.push(`${updated} mise(s) à jour`);
+    alert('✅ ' + msg.join(', ') + '.');
+  }
+  render();
+}
+
+function toggleFactPaid(id) {
+  const factures = getFactures();
+  const f = factures.find(x => x.id === id);
+  if (f) {
+    const newPaid = f.paid ? 0 : 1;
+    const datePaiement = f.paid ? null : new Date().toISOString().split('T')[0];
+    db.run('UPDATE factures SET paid=?, datePaiement=? WHERE id=?', [newPaid, datePaiement, id]);
+    persist();
+    render();
+  }
+}
+
+function openFactureDetail(id) {
+  const factures = getFactures();
+  const preneurs = getPreneurs();
+  const params = getParams();
+  
+  const f = factures.find(x => x.id === id);
+  if (!f) return;
+  const pr = getPreneur(f.preneurId);
+  const indice = (params.indices && params.indices[f.annee]) || 0;
+  const sousTotal = (f.lignes||[]).reduce((s, l) => s + (l.montantBaseRef || l.base || 0), 0);
+  const montantIndice = f.type === 'solde' ? Math.round(sousTotal * indice / 100 * 100) / 100 : 0;
+
+  const header = `
+    <div style="background:#f5f3f0;border-radius:8px;padding:14px 16px;margin-bottom:16px;">
+      <div style="font-size:16px;font-weight:800;">👤 ${pr ? pr.raisonSociale||pr.nom : '—'}</div>
+      ${pr?.siret ? `<div style="font-size:13px;color:#888780;margin-top:2px;">SIRET : ${pr.siret}</div>` : ''}
+      <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">
+        <div style="font-size:13px;">📅 Échéance : <strong>${moisLabel(f.mois)} ${f.annee}</strong></div>
+        <div style="font-size:13px;">${f.paid
+          ? `<span style="color:#27500a;font-weight:700;">✅ Payé le ${f.datePaiement}</span>`
+          : `<span style="color:#854f0b;font-weight:700;">⏳ En attente de paiement</span>`}</div>
+      </div>
+    </div>`;
+
+  const lignesHtml = (f.lignes||[]).map(l => {
+    const base = l.montantBaseRef || l.base || 0;
+    const montant = l.montant || 0;
+    const pct = base > 0 ? Math.round(montant / base * 100) : 0;
+    if (f.type === 'acompte') {
+      return `<div style="border:1px solid #e0ddd8;border-radius:8px;padding:12px 16px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:15px;margin-bottom:8px;">🌱 ${l.nomProp}</div>
+        <div class="drow"><span>Loyer annuel de base</span><span><strong>${base.toFixed(2)} €</strong></span></div>
+        <div class="drow" style="color:#854f0b;"><span>Taux de l'acompte</span><span>${pct}%</span></div>
+        <div class="drow" style="background:#faeeda;border-radius:4px;padding:4px 8px;margin-top:4px;font-weight:700;">
+          <span>💰 Montant de l'acompte</span><span>${montant.toFixed(2)} €</span>
+        </div>
+      </div>`;
+    } else {
+      return `<div style="border:1px solid #e0ddd8;border-radius:8px;padding:12px 16px;margin-bottom:8px;">
+        <div style="font-weight:700;font-size:15px;">🌱 ${l.nomProp}</div>
+        <div class="drow" style="margin-top:8px;"><span>Loyer annuel de base</span><span><strong>${base.toFixed(2)} €</strong></span></div>
+      </div>`;
+    }
+  }).join('');
+
+  let totalBlock;
+  if (f.type === 'acompte') {
+    const totalAcompte = (f.lignes||[]).reduce((s,l) => s+(l.montant||0), 0);
+    totalBlock = `
+      <div style="background:#854f0b;color:white;border-radius:8px;padding:14px 18px;margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:16px;font-weight:700;">💰 TOTAL ACOMPTE À RÉGLER</span>
+          <span style="font-size:24px;font-weight:800;">${totalAcompte.toFixed(2)} €</span>
+        </div>
+      </div>`;
+  } else {
+    const propIds = (f.lignes||[]).map(l => l.propId).filter(Boolean);
+    const acomptesVerses = factures
+      .filter(x => x.annee === f.annee && x.preneurId === f.preneurId && x.type === 'acompte')
+      .reduce((s, x) => s + (x.lignes||[]).filter(l => propIds.includes(l.propId)).reduce((ss,l) => ss+(l.montant||0), 0), 0);
+    const totalBrut = Math.round((sousTotal + montantIndice) * 100) / 100;
+    const indemnites = f.indemnites || [];
+    const totalIndemnites = Math.round(indemnites.reduce((s,i) => s + (i.montant||0), 0) * 100) / 100;
+    const totalFinal = Math.round((totalBrut - acomptesVerses - totalIndemnites) * 100) / 100;
+
+    const indemnHtml = indemnites.map(i => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0ede8;">
+        <div>
+          <span style="font-size:14px;">🌧️ ${i.motif}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <strong style="color:#a32d2d;">− ${i.montant.toFixed(2)} €</strong>
+        </div>
+      </div>`).join('');
+
+    totalBlock = `
+      <div style="border:2px solid #e0ddd8;border-radius:8px;padding:14px 16px;margin-top:8px;">
+        <div style="font-weight:700;font-size:13px;color:#888780;text-transform:uppercase;margin-bottom:10px;">📊 Calcul du solde</div>
+        <div class="drow"><span>🌱 Loyer annuel total (base)</span><span><strong>${sousTotal.toFixed(2)} €</strong></span></div>
+        <div class="drow" style="color:#854f0b;"><span>📈 Indice de fermage ${f.annee} (+${indice}%)</span><span><strong>+${montantIndice.toFixed(2)} €</strong></span></div>
+        <div class="drow" style="border-top:1px dashed #d3d1c7;padding-top:8px;margin-top:4px;font-weight:700;">
+          <span>= Loyer annuel révisé</span><span>${totalBrut.toFixed(2)} €</span>
+        </div>
+        ${acomptesVerses > 0 ? `<div class="drow" style="color:#888780;"><span>💰 Acomptes déjà versés (à déduire)</span><span>− ${acomptesVerses.toFixed(2)} €</span></div>` : ''}
+      </div>
+
+      <div style="background:#854f0b;color:white;border-radius:8px;padding:14px 18px;margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:16px;font-weight:700;">📋 SOLDE RESTANT À RÉGLER</span>
+          <span style="font-size:24px;font-weight:800;">${totalFinal.toFixed(2)} €</span>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('modal-facture-title').textContent = `${f.libelle} ${f.annee}`;
+  document.getElementById('modal-facture-content').innerHTML = `
+    ${header}
+    ${lignesHtml}
+    ${totalBlock}
+    <div style="margin-top:16px;">
+      <button class="btn ${f.paid?'':'btn-success'}" style="width:100%;justify-content:center;padding:14px;" onclick="toggleFactPaid('${f.id}');closeModal('facture');render();">
+        ${f.paid ? '↩️ Annuler le paiement' : '✅ Marquer comme payé'}
+      </button>
+    </div>`;
+  openModal('facture');
+}
+
+/* ================================================================
+   TOOLTIP
+================================================================ */
+const tip = document.getElementById('tip');
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('.help');
+  if (!el) return;
+  tip.textContent = el.getAttribute('data-tip');
+  tip.style.display = 'block';
+});
+document.addEventListener('mouseout', e => { if (!e.target.closest('.help')) return; tip.style.display = 'none'; });
+document.addEventListener('mousemove', e => {
+  if (tip.style.display === 'none') return;
+  let x = Math.max(8, Math.min(e.clientX - tip.offsetWidth/2, window.innerWidth - tip.offsetWidth - 8));
+  let y = Math.max(8, e.clientY - tip.offsetHeight - 14);
+  tip.style.left = x+'px'; tip.style.top = y+'px';
+});
+
+/* ================================================================
+   INIT
+================================================================ */
+initDB();
+</script>
+</body>
+</html>

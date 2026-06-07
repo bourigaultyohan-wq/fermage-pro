@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  fermage-manager:
+    image: nginx:alpine
+    container_name: fermage-manager
+    restart: always
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+    ports:
+      - "6622:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fermage-manager.rule=Host(`fermage-app.srv1728495.hstgr.cloud`)"
+      - "traefik.http.routers.fermage-manager.entrypoints=websecure"
+      - "traefik.http.routers.fermage-manager.tls=true"
+      - "traefik.http.services.fermage-manager.loadbalancer.server.port=80"
