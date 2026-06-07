@@ -10,6 +10,7 @@
 
     /* ═══ LAYOUT ═══ */
     .app { display:flex; height:100vh; overflow:hidden; }
+    .app.no-auth .sidebar { display:none; }
     .sidebar {
       width:250px; background:#1e1e1c; color:white;
       display:flex; flex-direction:column; flex-shrink:0; overflow-y:auto;
@@ -146,7 +147,7 @@
     .required-star { color:#a32d2d; }
 
     /* ═══ MODAL ═══ */
-    .modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center; }
+    .modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:9999; align-items:center; justify-content:center; }
     .modal-backdrop.open { display:flex; }
     .modal-box {
       background:white; border-radius:12px; padding:28px; width:90%;
@@ -294,6 +295,68 @@
   </div>
 </div>
 
+<!-- MODAL AJUSTEMENT -->
+<div class="modal-backdrop" id="modal-adjustment" onclick="if(event.target===this)closeModal('adjustment')">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>➕ Ajouter un ajustement</h3>
+      <button class="modal-close" onclick="closeModal('adjustment')">×</button>
+    </div>
+    <div style="padding:20px;">
+      <div class="form-group"><label>Libellé (ex: Sécheresse, Sinistre...)</label><input id="adj-libelle" placeholder="ex: Indemnité sécheresse" style="padding:10px;border:1px solid #d3d1c7;border-radius:6px;width:100%;"></div>
+      <div class="form-group"><label>Montant (€)</label><input id="adj-montant" type="number" placeholder="0.00" step="0.01" style="padding:10px;border:1px solid #d3d1c7;border-radius:6px;width:100%;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('adjustment')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveAdjustment()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMATION -->
+<div class="modal-backdrop" id="modal-confirm" onclick="if(event.target===this)cancelConfirm()">
+  <div class="modal-box" style="max-width:400px;">
+    <div style="padding:24px;">
+      <div id="confirm-message" style="font-size:16px;margin-bottom:20px;"></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="cancelConfirm()">Annuler</button>
+        <button class="btn btn-primary" id="confirm-btn" onclick="confirmAction()">Confirmer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOTIFICATION -->
+<div class="modal-backdrop" id="modal-notif" onclick="if(event.target===this)closeModal('notif')">
+  <div class="modal-box" style="max-width:400px;">
+    <div style="text-align:center;padding:24px;">
+      <div id="notif-icon" style="font-size:48px;margin-bottom:12px;"></div>
+      <div id="notif-title" style="font-size:18px;font-weight:700;margin-bottom:8px;"></div>
+      <div id="notif-message" style="font-size:14px;color:#888780;margin-bottom:20px;white-space:pre-wrap;"></div>
+      <button class="btn btn-primary" onclick="closeModal('notif')" style="width:100%;justify-content:center;">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RESET -->
+<div class="modal-backdrop" id="modal-reset" onclick="if(event.target===this)closeModal('reset')">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-head">
+      <h3>⚠️ Supprimer toutes mes données</h3>
+      <button class="modal-close" onclick="closeModal('reset')">×</button>
+    </div>
+    <div style="padding:20px 0;">
+      <p style="margin-bottom:16px;color:#a32d2d;font-weight:600;">Cette action est irréversible. Toutes vos propriétés, preneurs et factures seront supprimés.</p>
+      <p style="margin-bottom:16px;font-size:14px;color:#888780;">Pour confirmer, tapez le code : <strong id="reset-code-display" style="font-family:monospace;font-size:16px;color:#854f0b;"></strong></p>
+      <input id="reset-code-input" type="text" placeholder="Entrez le code ici" style="padding:12px;border:2px solid #d3d1c7;border-radius:6px;width:100%;font-size:14px;font-family:monospace;margin-bottom:16px;">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('reset')">Annuler</button>
+      <button class="btn btn-danger" onclick="confirmReset()">Supprimer définitivement</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PROPRIÉTÉ -->
 <div class="modal-backdrop" id="modal-prop" onclick="if(event.target===this)closeModal('prop')">
   <div class="modal-box wide">
@@ -383,15 +446,6 @@
     </div>
 
     <div class="form-section"><div class="form-section-title">Facturation</div></div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Mode de facturation <span class="help" data-tip="Groupé: une seule facture pour toutes les propriétés. Individuel: une facture par propriété.">?</span></label>
-        <select id="pr-mode">
-          <option value="groupe">Groupé (toutes propriétés)</option>
-          <option value="individuel">Individuel (par propriété)</option>
-        </select>
-      </div>
-    </div>
     <div class="form-section-title" style="margin-bottom:8px;">Planning annuel <span class="help" data-tip="Définissez les échéances de paiement. Chaque ligne représente un appel de fonds (acompte ou solde).">?</span></div>
     <div id="planning-items"></div>
     <button class="btn btn-sm" onclick="addPlanningItem()">+ Ajouter une échéance</button>
@@ -423,28 +477,62 @@
    SQLITE DB INITIALIZATION
 ================================================================ */
 let db = null;
+let currentUserId = null;
+let currentUsername = null;
 
 async function initDB() {
   const SQL = await initSqlJs({
     locateFile: file => `https://sql.js.org/dist/${file}`
   });
   
-  // Chercher une DB existante en localStorage
-  const saved = localStorage.getItem('fermage_sqlite_data');
-  if (saved) {
-    const buffer = new Uint8Array(JSON.parse(saved));
-    db = new SQL.Database(buffer);
+  // Initialiser IndexedDB
+  const idb = await new Promise((resolve, reject) => {
+    const req = indexedDB.open('FermageProDB', 1);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => resolve(req.result);
+    req.onupgradeneeded = (e) => {
+      e.target.result.createObjectStore('db', { keyPath: 'id' });
+    };
+  });
+  
+  // Charger la DB depuis IndexedDB
+  const stored = await new Promise((resolve) => {
+    const req = idb.transaction('db', 'readonly').objectStore('db').get('main');
+    req.onsuccess = () => resolve(req.result?.data);
+  });
+  
+  if (stored) {
+    db = new SQL.Database(new Uint8Array(stored));
   } else {
     db = new SQL.Database();
   }
   
   createTables();
-  render();
+  persist();
 }
 
 function createTables() {
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE,
+    password TEXT,
+    email TEXT,
+    raisonSociale TEXT,
+    siret TEXT,
+    adresse TEXT,
+    tel TEXT
+  )`);
+
+  // Créer un compte démo s'il n'y en a pas
+  const users = db.exec('SELECT COUNT(*) FROM users');
+  if (!users.length || users[0].values[0][0] === 0) {
+    db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [uid(), 'demo', 'demo', 'demo@fermage.local', '', '', '', '']);
+  }
+
+  // Créer les tables avec userId
   db.run(`CREATE TABLE IF NOT EXISTS proprietes (
     id TEXT PRIMARY KEY,
+    userId TEXT,
     nom TEXT,
     surface REAL,
     adresse TEXT,
@@ -460,6 +548,7 @@ function createTables() {
 
   db.run(`CREATE TABLE IF NOT EXISTS preneurs (
     id TEXT PRIMARY KEY,
+    userId TEXT,
     raisonSociale TEXT,
     forme TEXT,
     nom TEXT,
@@ -473,12 +562,12 @@ function createTables() {
     ville TEXT,
     tel TEXT,
     email TEXT,
-    mode TEXT,
     planning TEXT
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS factures (
     id TEXT PRIMARY KEY,
+    userId TEXT,
     annee INTEGER,
     preneurId TEXT,
     propId TEXT,
@@ -498,64 +587,250 @@ function createTables() {
     key TEXT PRIMARY KEY,
     value TEXT
   )`);
+
+  // Créer un compte démo s'il n'y en a pas
+  const usersCheck = db.exec('SELECT COUNT(*) FROM users');
+  if (!usersCheck.length || usersCheck[0].values[0][0] === 0) {
+    db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+      [uid(), 'demo', 'demo', 'demo@fermage.local', '', '', '', '']);
+  }
+  
+  persist();
 }
 
 function persist() {
   const data = db.export();
   const arr = Array.from(data);
-  localStorage.setItem('fermage_sqlite_data', JSON.stringify(arr));
+  
+  // Sauvegarder dans IndexedDB
+  const req = indexedDB.open('FermageProDB', 1);
+  req.onsuccess = () => {
+    const idb = req.result;
+    const tx = idb.transaction('db', 'readwrite');
+    tx.objectStore('db').put({ id: 'main', data: arr });
+  };
 }
 
 function getParams() {
-  const result = db.exec('SELECT * FROM params');
+  const result = db.exec('SELECT raisonSociale, siret, adresse, email, tel FROM users WHERE id=?', [currentUserId]);
   const params = { raisonSociale: 'Votre nom', siret: '', adresse: '', email: '', tel: '', indices: {} };
   if (result.length && result[0].values.length) {
-    result[0].values.forEach(row => {
-      const key = row[0];
-      const val = row[1];
-      if (key === 'indices') {
-        params.indices = JSON.parse(val || '{}');
-      } else {
-        params[key] = val;
-      }
-    });
+    const row = result[0].values[0];
+    params.raisonSociale = row[0] || 'Votre nom';
+    params.siret = row[1] || '';
+    params.adresse = row[2] || '';
+    params.email = row[3] || '';
+    params.tel = row[4] || '';
   }
+  
+  // Récupérer les indices depuis params
+  const indicesResult = db.exec('SELECT value FROM params WHERE key = ?', [currentUserId + '_indices']);
+  if (indicesResult.length && indicesResult[0].values.length) {
+    params.indices = JSON.parse(indicesResult[0].values[0][0] || '{}');
+  }
+  
   return params;
 }
 
 function getProprietes() {
-  const result = db.exec('SELECT * FROM proprietes');
+  const result = db.exec('SELECT * FROM proprietes WHERE userId=?', [currentUserId]);
   if (!result.length) return [];
   return result[0].values.map(row => ({
-    id: row[0], nom: row[1], surface: row[2], adresse: row[3], cp: row[4],
-    ville: row[5], lat: row[6], lng: row[7], cadastre: row[8], notes: row[9],
-    preneurId: row[10], montant: row[11]
+    id: row[0], userId: row[1], nom: row[2], surface: row[3], adresse: row[4], cp: row[5],
+    ville: row[6], lat: row[7], lng: row[8], cadastre: row[9], notes: row[10],
+    preneurId: row[11], montant: row[12]
   }));
 }
 
 function getPreneurs() {
-  const result = db.exec('SELECT * FROM preneurs');
+  const result = db.exec('SELECT * FROM preneurs WHERE userId=?', [currentUserId]);
   if (!result.length) return [];
   return result[0].values.map(row => ({
-    id: row[0], raisonSociale: row[1], forme: row[2], nom: row[3], prenom: row[4],
-    siret: row[5], tva: row[6], msa: row[7], naf: row[8], adr: row[9], cp: row[10],
-    ville: row[11], tel: row[12], email: row[13], mode: row[14],
-    planning: row[15] ? JSON.parse(row[15]) : []
+    id: row[0], userId: row[1], raisonSociale: row[2], forme: row[3], nom: row[4], prenom: row[5],
+    siret: row[6], tva: row[7], msa: row[8], naf: row[9], adr: row[10], cp: row[11],
+    ville: row[12], tel: row[13], email: row[14], mode: row[15],
+    planning: row[16] ? JSON.parse(row[16]) : []
   }));
 }
 
 function getFactures() {
-  const result = db.exec('SELECT * FROM factures');
+  const result = db.exec('SELECT * FROM factures WHERE userId=?', [currentUserId]);
   if (!result.length) return [];
   return result[0].values.map(row => ({
-    id: row[0], annee: row[1], preneurId: row[2], propId: row[3], stepId: row[4],
-    libelle: row[5], mois: row[6], type: row[7], lignes: row[8] ? JSON.parse(row[8]) : [],
-    adjustments: row[9] ? JSON.parse(row[9]) : [], indemnites: row[10] ? JSON.parse(row[10]) : [],
-    montantTotal: row[11], paid: row[12] === 1, datePaiement: row[13]
+    id: row[0], userId: row[1], annee: row[2], preneurId: row[3], propId: row[4], stepId: row[5],
+    libelle: row[6], mois: row[7], type: row[8], lignes: row[9] ? JSON.parse(row[9]) : [],
+    adjustments: row[10] ? JSON.parse(row[10]) : [], indemnites: row[11] ? JSON.parse(row[11]) : [],
+    montantTotal: row[12], paid: row[13] === 1, datePaiement: row[14]
   }));
 }
 
 function uid() { return Math.random().toString(36).slice(2,10); }
+
+/* ================================================================
+   AUTHENTIFICATION
+================================================================ */
+function login(username, password) {
+  const result = db.exec('SELECT * FROM users WHERE username=? AND password=?', [username, password]);
+  if (result.length && result[0].values.length) {
+    const row = result[0].values[0];
+    currentUserId = row[0];
+    currentUsername = row[1];
+    sessionStorage.setItem('currentUserId', currentUserId);
+    sessionStorage.setItem('currentUsername', currentUsername);
+    return true;
+  }
+  return false;
+}
+
+function register(username, password, email) {
+  const existing = db.exec('SELECT * FROM users WHERE username=?', [username]);
+  if (existing.length && existing[0].values.length) return false;
+  const id = uid();
+  db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+    [id, username, password, email, '', '', '', '']);
+  persist();
+  currentUserId = id;
+  currentUsername = username;
+  sessionStorage.setItem('currentUserId', currentUserId);
+  sessionStorage.setItem('currentUsername', currentUsername);
+  return true;
+}
+
+let currentAdjustmentFactId = null;
+
+function openAdjustmentModal(factId) {
+  currentAdjustmentFactId = factId;
+  document.getElementById('adj-libelle').value = '';
+  document.getElementById('adj-montant').value = '';
+  openModal('adjustment');
+}
+
+function saveAdjustment() {
+  const libelle = document.getElementById('adj-libelle').value.trim();
+  const montant = parseFloat(document.getElementById('adj-montant').value);
+  
+  if (!libelle) { showNotification('Entrez un libellé.', 'Champ requis', '⚠️'); return; }
+  if (isNaN(montant)) { showNotification('Entrez un montant valide.', 'Erreur', '⚠️'); return; }
+  
+  // Récupérer directement de la DB
+  const result = db.exec('SELECT adjustments FROM factures WHERE id=? AND userId=?', [currentAdjustmentFactId, currentUserId]);
+  
+  let adj = [];
+  if (result.length && result[0].values.length) {
+    try {
+      adj = JSON.parse(result[0].values[0][0] || '[]');
+    } catch (e) {
+      adj = [];
+    }
+  }
+  
+  adj.push({ libelle, montant });
+  db.run('UPDATE factures SET adjustments=? WHERE id=? AND userId=?', 
+    [JSON.stringify(adj), currentAdjustmentFactId, currentUserId]);
+  
+  persist();
+  closeModal('adjustment');
+  openFactureDetail(currentAdjustmentFactId);
+}
+
+function removeAdjustment(factId, index) {
+  // Récupérer directement de la DB
+  const result = db.exec('SELECT adjustments FROM factures WHERE id=? AND userId=?', [factId, currentUserId]);
+  
+  let adj = [];
+  if (result.length && result[0].values.length) {
+    try {
+      adj = JSON.parse(result[0].values[0][0] || '[]');
+    } catch (e) {
+      adj = [];
+    }
+  }
+  
+  adj.splice(index, 1);
+  db.run('UPDATE factures SET adjustments=? WHERE id=? AND userId=?', 
+    [JSON.stringify(adj), factId, currentUserId]);
+  
+  persist();
+  openFactureDetail(factId);
+}
+
+let confirmCallback = null;
+
+function showConfirm(message, callback, btnText = 'Confirmer') {
+  document.getElementById('confirm-message').textContent = message;
+  document.getElementById('confirm-btn').textContent = btnText;
+  confirmCallback = callback;
+  openModal('confirm');
+}
+
+function confirmAction() {
+  if (confirmCallback) {
+    confirmCallback();
+  }
+  cancelConfirm();
+}
+
+function cancelConfirm() {
+  confirmCallback = null;
+  closeModal('confirm');
+}
+
+function showNotification(message, title, icon) {
+  document.getElementById('notif-message').textContent = message;
+  document.getElementById('notif-title').textContent = title || 'Notification';
+  document.getElementById('notif-icon').textContent = icon || 'ℹ️';
+  const modal = document.getElementById('modal-notif');
+  modal.style.zIndex = '99999';
+  openModal('notif');
+}
+
+let resetCode = '';
+
+function openResetModal() {
+  resetCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+  document.getElementById('reset-code-display').textContent = resetCode;
+  document.getElementById('reset-code-input').value = '';
+  openModal('reset');
+}
+
+function confirmReset() {
+  const entered = document.getElementById('reset-code-input').value.toUpperCase();
+  if (entered !== resetCode) {
+    showNotification('Vérifiez le code et réessayez.', 'Code incorrect', '❌');
+    return;
+  }
+  
+  db.run('DELETE FROM proprietes WHERE userId=?', [currentUserId]);
+  db.run('DELETE FROM preneurs WHERE userId=?', [currentUserId]);
+  db.run('DELETE FROM factures WHERE userId=?', [currentUserId]);
+  persist();
+  closeModal('reset');
+  render();
+  showNotification('Toutes vos données ont été supprimées.', 'Suppression confirmée', '✅');
+}
+
+function logout() {
+  currentUserId = null;
+  currentUsername = null;
+  currentView = 'dashboard';
+  sessionStorage.clear();
+  render();
+}
+
+function checkSession() {
+  const userId = sessionStorage.getItem('currentUserId');
+  const username = sessionStorage.getItem('currentUsername');
+  
+  if (userId && username) {
+    currentUserId = userId;
+    currentUsername = username;
+    return true;
+  }
+  
+  currentUserId = null;
+  currentUsername = null;
+  return false;
+}
 
 /* ================================================================
    DATA HELPERS
@@ -636,18 +911,155 @@ function nav(view) {
   render();
 }
 
-function openModal(id)  { document.getElementById('modal-'+id).classList.add('open'); }
+let maxZIndex = 9999;
+function openModal(id)  { 
+  const modal = document.getElementById('modal-'+id);
+  modal.style.zIndex = (++maxZIndex).toString();
+  modal.classList.add('open'); 
+}
 function closeModal(id) { document.getElementById('modal-'+id).classList.remove('open'); }
 
 function render() {
-  const actions = document.getElementById('topbar-actions');
-  actions.innerHTML = '';
+  const app = document.querySelector('.app');
   const c = document.getElementById('content');
-  if (currentView === 'dashboard')   { renderDashboard(c); }
-  if (currentView === 'factures')    { renderFactures(c, actions); }
-  if (currentView === 'proprietes')  { renderProprietes(c, actions); }
-  if (currentView === 'preneurs')    { renderPreneurs(c, actions); }
-  if (currentView === 'parametres')  { renderParametres(c); }
+  
+  if (!app || !c) {
+    console.error('Éléments manquants:', { app, c });
+    return;
+  }
+  
+  if (!currentUserId) {
+    app.classList.add('no-auth');
+    c.innerHTML = '';
+    renderLogin();
+    return;
+  }
+  app.classList.remove('no-auth');
+  c.innerHTML = '';
+  
+  const actions = document.getElementById('topbar-actions');
+  if (actions) {
+    actions.innerHTML = `<button class="btn" onclick="logout()">🚪 Déconnexion (${currentUsername})</button>`;
+  }
+  
+  try {
+    if (currentView === 'dashboard')   { renderDashboard(c); }
+    else if (currentView === 'factures')    { renderFactures(c, actions); }
+    else if (currentView === 'proprietes')  { renderProprietes(c, actions); }
+    else if (currentView === 'preneurs')    { renderPreneurs(c, actions); }
+    else if (currentView === 'parametres')  { renderParametres(c); }
+    else {
+      c.innerHTML = '<div style="padding:20px;">Vue non reconnue: ' + currentView + '</div>';
+    }
+  } catch (e) {
+    console.error('Erreur lors du rendu:', e);
+    c.innerHTML = '<div style="padding:20px;color:red;">Erreur: ' + e.message + '</div>';
+  }
+}
+
+/* ── LOGIN ───────────────────────────────────────────────────── */
+function renderLogin() {
+  const content = document.getElementById('content');
+  const isLoginTab = sessionStorage.getItem('showRegister') !== 'true';
+  
+  content.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:100%;background:linear-gradient(135deg, #854f0b 0%, #6a3e08 100%);">
+      <div class="card" style="max-width:420px;border:none;box-shadow:0 12px 48px rgba(0,0,0,0.3);">
+        <div style="text-align:center;margin-bottom:28px;">
+          <div style="font-size:48px;margin-bottom:12px;">🌾</div>
+          <div style="font-size:24px;font-weight:800;color:#854f0b;">Fermage Pro</div>
+          <div style="font-size:13px;color:#888780;margin-top:6px;">Gestion des baux ruraux</div>
+        </div>
+        
+        <div style="display:flex;gap:8px;margin-bottom:24px;border-bottom:2px solid #e0ddd8;padding-bottom:14px;">
+          <button class="btn ${isLoginTab?'btn-primary':''}" onclick="sessionStorage.removeItem('showRegister');render()" style="flex:1;justify-content:center;">
+            🔓 Connexion
+          </button>
+          <button class="btn ${!isLoginTab?'btn-primary':''}" onclick="sessionStorage.setItem('showRegister','true');render()" style="flex:1;justify-content:center;">
+            ✏️ Inscription
+          </button>
+        </div>
+        
+        ${isLoginTab ? `
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="form-group">
+              <label>Nom d'utilisateur</label>
+              <input id="login-user" placeholder="votre identifiant" style="padding:12px 14px;">
+            </div>
+            <div class="form-group">
+              <label>Mot de passe</label>
+              <input id="login-pass" type="password" placeholder="••••••••" style="padding:12px 14px;">
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;" onclick="doLogin()">
+              🔓 Se connecter
+            </button>
+          </div>
+        ` : `
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="form-group">
+              <label>Nom d'utilisateur</label>
+              <input id="reg-user" placeholder="votre identifiant" style="padding:12px 14px;">
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input id="reg-email" type="email" placeholder="votre@email.com" style="padding:12px 14px;">
+            </div>
+            <div class="form-group">
+              <label>Mot de passe</label>
+              <input id="reg-pass" type="password" placeholder="••••••••" style="padding:12px 14px;">
+            </div>
+            <div class="form-group">
+              <label>Confirmer le mot de passe</label>
+              <input id="reg-pass2" type="password" placeholder="••••••••" style="padding:12px 14px;">
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;" onclick="doRegister()">
+              ✏️ Créer un compte
+            </button>
+          </div>
+        `}
+        
+        <div style="margin-top:20px;padding-top:14px;border-top:2px solid #e0ddd8;font-size:12px;color:#888780;text-align:center;line-height:1.6;">
+          <span style="color:#a32d2d;">⚠️ Les données sont stockées localement dans votre navigateur.</span>
+          ${window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:' ? `
+            <div style="margin-top:10px;padding:10px;background:#fef8e8;border:1px solid #f0d060;border-radius:6px;text-align:left;">
+              <strong style="color:#7a3e00;">🔧 Mode développement - Comptes disponibles:</strong>
+              <div id="dev-users" style="margin-top:6px;font-family:monospace;font-size:11px;"></div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    </div>`;
+  
+  displayDevUsers();
+}
+
+function doLogin() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  if (!user || !pass) { showNotification('Entrez votre identifiant et mot de passe.', 'Champs vides', '⚠️'); return; }
+  if (login(user, pass)) {
+    render();
+  } else {
+    showNotification('Vérifiez votre identifiant et mot de passe.', 'Identifiants incorrects', '❌');
+  }
+}
+
+function doRegister() {
+  const user = document.getElementById('reg-user').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+  const pass2 = document.getElementById('reg-pass2').value;
+  if (!user || !email || !pass || !pass2) { showNotification('Remplissez tous les champs.', 'Champs incomplets', '⚠️'); return; }
+  if (pass !== pass2) { showNotification('Vérifiez que les mots de passe correspondent.', 'Mots de passe différents', '⚠️'); return; }
+  if (user.length < 3) { showNotification('Minimum 3 caractères.', 'Identifiant trop court', '⚠️'); return; }
+  if (register(user, pass, email)) {
+    showNotification('Vous pouvez maintenant vous connecter.', 'Compte créé', '✅');
+    sessionStorage.removeItem('showRegister');
+    render();
+  } else {
+    showNotification('Cet identifiant existe déjà.', 'Identifiant en use', '❌');
+  }
+  displayDevUsers();
 }
 
 /* ── DASHBOARD ───────────────────────────────────────────────── */
@@ -661,7 +1073,7 @@ function renderDashboard(c) {
   const encai = factures.filter(f =>  f.paid).reduce((s,f) => s + (f.montantTotal||0), 0);
 
   const steps = [
-    { label: '1. Mes informations', done: true, link: "nav('parametres')" },
+    { label: '1. Mes informations', done: false, link: "nav('parametres')" },
     { label: '2. Mes propriétés', done: nbProps > 0, link: "nav('proprietes')" },
     { label: '3. Mes preneurs', done: nbPreneurs > 0, link: "nav('preneurs')" },
     { label: '4. Générer les factures', done: factures.length > 0, link: "nav('factures')" }
@@ -846,7 +1258,6 @@ function renderPreneurs(c, actions) {
   let rows = '';
   preneurs.forEach(pr => {
     const props = proprietes.filter(p => p.preneurId === pr.id);
-    const mode = pr.mode === 'individuel' ? '📄 Facture par propriété' : '📋 Facture groupée';
     const nbEcheances = (pr.planning||[]).length;
     rows += `<tr>
       <td>
@@ -864,10 +1275,6 @@ function renderPreneurs(c, actions) {
           ? props.map(p => `<span class="badge badge-orange" style="margin:2px;">🌱 ${p.nom}</span>`).join('')
           : `<span class="badge badge-red">⚠️ Aucune propriété</span>`}
       </td>
-      <td>
-        <span class="badge badge-blue">${mode}</span>
-        <br><span style="font-size:12px;color:#888780;margin-top:4px;">${nbEcheances} échéance(s)/an</span>
-      </td>
       <td><div class="btn-group">
         <button class="btn btn-sm" onclick="openPreneurModal('${pr.id}')">✏️ Modifier</button>
         <button class="btn btn-sm btn-danger" onclick="deletePreneur('${pr.id}')">🗑️</button>
@@ -877,7 +1284,7 @@ function renderPreneurs(c, actions) {
 
   c.innerHTML = `<div class="card">
     <div class="table-wrap"><table>
-      <tr><th>Identité</th><th>Contact</th><th>Propriétés attribuées</th><th>Mode de facturation</th><th>Actions</th></tr>
+      <tr><th>Identité</th><th>Contact</th><th>Propriétés attribuées</th><th>Actions</th></tr>
       ${rows}
     </table></div>
   </div>`;
@@ -1066,6 +1473,8 @@ function renderParametres(c) {
         <div class="form-group"><label>Email</label><input id="my-email" value="${params.email||''}" onchange="saveParams()"></div>
         <div class="form-group"><label>Téléphone</label><input id="my-tel" value="${params.tel||''}" onchange="saveParams()"></div>
       </div>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="saveParams(); showNotification('Vos informations ont été enregistrées.', 'Succès', '✅')">💾 Enregistrer</button>
+      ${window.location.protocol === 'file:' ? `<div style="font-size:11px;color:#888780;margin-top:10px;padding:8px;background:#f0ede8;border-radius:4px;">DEBUG: ${JSON.stringify({raisonSociale: params.raisonSociale, siret: params.siret, adresse: params.adresse, email: params.email, tel: params.tel})}</div>` : ''}
     </div>
 
     <div class="card">
@@ -1087,7 +1496,7 @@ function renderParametres(c) {
     </div>
 
     <div class="card">
-      <button class="btn btn-danger" onclick="if(confirm('Effacer toutes les données ?')){db.run('DELETE FROM proprietes'); db.run('DELETE FROM preneurs'); db.run('DELETE FROM factures'); db.run('DELETE FROM params'); persist(); location.reload();}">🗑️ Réinitialiser toutes les données</button>
+      <button class="btn btn-danger" onclick="openResetModal()">🗑️ Réinitialiser toutes les données</button>
     </div>`;
 }
 
@@ -1098,25 +1507,21 @@ function setIndice(annee, val) {
   if (isNaN(v)) delete params.indices[annee];
   else params.indices[annee] = v;
   
-  db.run('DELETE FROM params WHERE key = ?', ['indices']);
-  db.run('INSERT INTO params VALUES (?, ?)', ['indices', JSON.stringify(params.indices)]);
+  db.run('DELETE FROM params WHERE key = ?', [currentUserId + '_indices']);
+  db.run('INSERT INTO params VALUES (?, ?)', [currentUserId + '_indices', JSON.stringify(params.indices)]);
   persist();
   renderParametres(document.getElementById('content'));
 }
 
 function saveParams() {
-  const params = {
-    raisonSociale: document.getElementById('my-rs').value,
-    siret: document.getElementById('my-siret').value,
-    adresse: document.getElementById('my-adr').value,
-    email: document.getElementById('my-email').value,
-    tel: document.getElementById('my-tel').value
-  };
+  const raisonSociale = document.getElementById('my-rs').value;
+  const siret = document.getElementById('my-siret').value;
+  const adresse = document.getElementById('my-adr').value;
+  const email = document.getElementById('my-email').value;
+  const tel = document.getElementById('my-tel').value;
   
-  db.run('DELETE FROM params WHERE key != ?', ['indices']);
-  Object.entries(params).forEach(([k, v]) => {
-    db.run('INSERT OR REPLACE INTO params VALUES (?, ?)', [k, v]);
-  });
+  db.run('UPDATE users SET raisonSociale=?, siret=?, adresse=?, email=?, tel=? WHERE id=?',
+    [raisonSociale, siret, adresse, email, tel, currentUserId]);
   persist();
 }
 
@@ -1174,30 +1579,31 @@ function openPropModal(id) {
 
 function saveProp() {
   const nom = document.getElementById('p-nom').value.trim();
-  if (!nom) { alert('La désignation est requise.'); return; }
+  if (!nom) { showNotification('Entrez la désignation de la propriété.', 'Champ requis', '⚠️'); return; }
   
   const montant = parseFloat(document.getElementById('p-montant').value) || null;
   const preneurId = document.getElementById('p-preneur').value || null;
   
   if (editPropId) {
-    db.run('UPDATE proprietes SET nom=?, surface=?, adresse=?, cp=?, ville=?, lat=?, lng=?, cadastre=?, notes=?, preneurId=?' + (!hasFact(editPropId) ? ', montant=?' : '') + ' WHERE id=?',
+    db.run('UPDATE proprietes SET nom=?, surface=?, adresse=?, cp=?, ville=?, lat=?, lng=?, cadastre=?, notes=?, preneurId=?' + (!hasFact(editPropId) ? ', montant=?' : '') + ' WHERE id=? AND userId=?',
       !hasFact(editPropId)
-        ? [nom, parseFloat(document.getElementById('p-surface').value) || null, document.getElementById('p-adresse').value.trim(), document.getElementById('p-cp').value.trim(), document.getElementById('p-ville').value.trim(), parseFloat(document.getElementById('p-lat').value) || null, parseFloat(document.getElementById('p-lng').value) || null, document.getElementById('p-cadastre').value.trim(), document.getElementById('p-notes').value.trim(), preneurId, montant, editPropId]
-        : [nom, parseFloat(document.getElementById('p-surface').value) || null, document.getElementById('p-adresse').value.trim(), document.getElementById('p-cp').value.trim(), document.getElementById('p-ville').value.trim(), parseFloat(document.getElementById('p-lat').value) || null, parseFloat(document.getElementById('p-lng').value) || null, document.getElementById('p-cadastre').value.trim(), document.getElementById('p-notes').value.trim(), preneurId, editPropId]
+        ? [nom, parseFloat(document.getElementById('p-surface').value) || null, document.getElementById('p-adresse').value.trim(), document.getElementById('p-cp').value.trim(), document.getElementById('p-ville').value.trim(), parseFloat(document.getElementById('p-lat').value) || null, parseFloat(document.getElementById('p-lng').value) || null, document.getElementById('p-cadastre').value.trim(), document.getElementById('p-notes').value.trim(), preneurId, montant, editPropId, currentUserId]
+        : [nom, parseFloat(document.getElementById('p-surface').value) || null, document.getElementById('p-adresse').value.trim(), document.getElementById('p-cp').value.trim(), document.getElementById('p-ville').value.trim(), parseFloat(document.getElementById('p-lat').value) || null, parseFloat(document.getElementById('p-lng').value) || null, document.getElementById('p-cadastre').value.trim(), document.getElementById('p-notes').value.trim(), preneurId, editPropId, currentUserId]
     );
   } else {
-    db.run('INSERT INTO proprietes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [uid(), nom, parseFloat(document.getElementById('p-surface').value) || null, document.getElementById('p-adresse').value.trim(), document.getElementById('p-cp').value.trim(), document.getElementById('p-ville').value.trim(), parseFloat(document.getElementById('p-lat').value) || null, parseFloat(document.getElementById('p-lng').value) || null, document.getElementById('p-cadastre').value.trim(), document.getElementById('p-notes').value.trim(), preneurId, montant]
+    db.run('INSERT INTO proprietes VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [uid(), currentUserId, nom, parseFloat(document.getElementById('p-surface').value) || null, document.getElementById('p-adresse').value.trim(), document.getElementById('p-cp').value.trim(), document.getElementById('p-ville').value.trim(), parseFloat(document.getElementById('p-lat').value) || null, parseFloat(document.getElementById('p-lng').value) || null, document.getElementById('p-cadastre').value.trim(), document.getElementById('p-notes').value.trim(), preneurId, montant]
     );
   }
   persist(); closeModal('prop'); render();
 }
 
 function deleteProp(id) {
-  if (hasFact(id)) { alert('Des factures existent pour cette propriété.'); return; }
-  if (!confirm('Supprimer cette propriété ?')) return;
-  db.run('DELETE FROM proprietes WHERE id=?', [id]);
-  persist(); render();
+  if (hasFact(id)) { showNotification('Impossible de supprimer : des factures existent pour cette propriété.', 'Suppression impossible', '⚠️'); return; }
+  showConfirm('Êtes-vous sûr de vouloir supprimer cette propriété ?', () => {
+    db.run('DELETE FROM proprietes WHERE id=? AND userId=?', [id, currentUserId]);
+    persist(); render();
+  }, '🗑️ Supprimer');
 }
 
 /* ================================================================
@@ -1224,11 +1630,30 @@ function openPreneurModal(id) {
   document.getElementById('pr-ville').value  = pr?.ville  || '';
   document.getElementById('pr-tel').value    = pr?.tel    || '';
   document.getElementById('pr-email').value  = pr?.email  || '';
-  document.getElementById('pr-mode').value   = pr?.mode   || 'groupe';
   
   tmpPlanning = JSON.parse(JSON.stringify(pr?.planning || [{ id:uid(), mois:5, libelle:'Acompte', type:'acompte', valType:'pct', val:50 }, { id:uid(), mois:11, libelle:'Solde', type:'solde', valType:'pct', val:100 }]));
   renderPlanningItems();
   openModal('preneur');
+}
+
+function displayDevUsers() {
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'file:') {
+    return;
+  }
+  const el = document.getElementById('dev-users');
+  if (!el) return;
+  
+  const result = db.exec('SELECT username, password FROM users');
+  if (!result.length || !result[0].values.length) {
+    el.innerHTML = '<p style="color:#888780;">Aucun utilisateur</p>';
+    return;
+  }
+  
+  el.innerHTML = result[0].values.map(row => `
+    <div style="background:#ffffff;padding:6px;border-radius:4px;margin:4px 0;border:1px solid #e0ddd8;">
+      <strong style="color:#7a3e00;">👤 ${row[0]}</strong>
+      <br>Pass: <code style="background:#fef8e8;padding:2px 6px;border-radius:3px;">${row[1]}</code>
+    </div>`).join('');
 }
 
 function renderPlanningItems() {
@@ -1258,9 +1683,10 @@ function addPlanningItem() {
 function savePreneur() {
   const rs = document.getElementById('pr-rs').value.trim();
   const nom = document.getElementById('pr-nom').value.trim();
-  if (!rs && !nom) { alert('La raison sociale ou le nom est requis.'); return; }
+  if (!rs && !nom) { showNotification('Entrez la raison sociale ou le nom.', 'Champ requis', '⚠️'); return; }
   
   const data = [
+    currentUserId,
     rs, document.getElementById('pr-forme').value,
     nom, document.getElementById('pr-prenom').value.trim(),
     document.getElementById('pr-siret').value.trim(),
@@ -1272,25 +1698,25 @@ function savePreneur() {
     document.getElementById('pr-ville').value.trim(),
     document.getElementById('pr-tel').value.trim(),
     document.getElementById('pr-email').value.trim(),
-    document.getElementById('pr-mode').value,
     JSON.stringify(tmpPlanning)
   ];
   
   if (editPreneurId) {
-    db.run('UPDATE preneurs SET raisonSociale=?, forme=?, nom=?, prenom=?, siret=?, tva=?, msa=?, naf=?, adr=?, cp=?, ville=?, tel=?, email=?, mode=?, planning=? WHERE id=?',
-      [...data, editPreneurId]);
+    db.run('UPDATE preneurs SET raisonSociale=?, forme=?, nom=?, prenom=?, siret=?, tva=?, msa=?, naf=?, adr=?, cp=?, ville=?, tel=?, email=?, planning=? WHERE id=? AND userId=?',
+      [data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[11], data[12], data[13], data[14], editPreneurId, currentUserId]);
   } else {
-    db.run('INSERT INTO preneurs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    db.run('INSERT INTO preneurs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [uid(), ...data]);
   }
   persist(); closeModal('preneur'); render();
 }
 
 function deletePreneur(id) {
-  if (!confirm('Supprimer ce preneur ?')) return;
-  db.run('DELETE FROM preneurs WHERE id=?', [id]);
-  db.run('DELETE FROM factures WHERE preneurId=?', [id]);
-  persist(); render();
+  showConfirm('Êtes-vous sûr de vouloir supprimer ce preneur ? Les factures associées seront aussi supprimées.', () => {
+    db.run('DELETE FROM preneurs WHERE id=? AND userId=?', [id, currentUserId]);
+    db.run('DELETE FROM factures WHERE preneurId=? AND userId=?', [id, currentUserId]);
+    persist(); render();
+  }, '🗑️ Supprimer');
 }
 
 /* ================================================================
@@ -1302,11 +1728,28 @@ function genererFactures() {
   const proprietes = getProprietes();
   const params = getParams();
   
-  if (!preneurs.length) { alert('Aucun preneur de bail configuré.'); return; }
-  if (!confirm(`Mettre à jour les factures pour ${annee} ?\n\nLes montants seront recalculés.`)) return;
+  if (!preneurs.length) { showNotification('Configurez au moins un preneur de bail avant de générer les factures.', 'Aucun preneur', '⚠️'); return; }
+  showConfirm(`Mettre à jour les factures pour ${annee} ?\n\nLes montants seront recalculés.`, () => {
+    _genererFacturesConfirmed(annee, preneurs, proprietes, params);
+  }, '📊 Générer');
+}
 
+function _genererFacturesConfirmed(annee, preneurs, proprietes, params) {
   let created = 0, updated = 0;
   let errors = [];
+  
+  // Sauvegarder les statuts des anciennes factures
+  const oldFactures = getFactures().filter(f => f.annee == annee);
+  const statusMap = {};
+  oldFactures.forEach(f => {
+    const key = `${f.preneurId}_${f.stepId}_${f.propId||'global'}`;
+    statusMap[key] = { paid: f.paid, datePaiement: f.datePaiement };
+  });
+  
+  // Supprimer les anciennes factures de cette année
+  oldFactures.forEach(f => {
+    db.run('DELETE FROM factures WHERE id=? AND userId=?', [f.id, currentUserId]);
+  });
 
   preneurs.forEach(pr => {
     const props = proprietes.filter(p => p.preneurId === pr.id);
@@ -1324,7 +1767,7 @@ function genererFactures() {
     const factCettePasse = [];
 
     planning.forEach(step => {
-      const calcLignesIndividuel = (prop) => {
+      props.forEach(prop => {
         const baseRef = totauxBase[prop.id];
         const baseAvecIndice = totauxAvecIndice[prop.id];
         let montant = 0;
@@ -1336,73 +1779,28 @@ function genererFactures() {
             .reduce((s,f) => s + (f.lignes||[]).filter(l=>l.propId===prop.id).reduce((ss,l)=>ss+l.montant,0), 0);
           montant = Math.round((baseAvecIndice - acomptesExist) * 100) / 100;
         }
-        return { propId: prop.id, nomProp: prop.nom, montantBaseRef: baseRef, base: baseRef, montant };
-      };
-
-      if (pr.mode === 'individuel') {
-        props.forEach(prop => {
-          const ligne = calcLignesIndividuel(prop);
-          const existing = db.exec('SELECT * FROM factures WHERE annee=? AND preneurId=? AND stepId=? AND propId=?',
-            [annee, pr.id, step.id, prop.id]);
-          
-          const id = existing.length ? existing[0].values[0][0] : uid();
-          const sql = existing.length
-            ? 'UPDATE factures SET lignes=?, montantTotal=?, libelle=?, mois=? WHERE id=?'
-            : 'INSERT INTO factures VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-          const vals = existing.length
-            ? [JSON.stringify([ligne]), ligne.montant, step.libelle, step.mois, id]
-            : [id, annee, pr.id, prop.id, step.id, step.libelle, step.mois, step.type, JSON.stringify([ligne]), '[]', '[]', ligne.montant, 0, null];
-          
-          db.run(sql, vals);
-          if (!existing.length) created++;
-          else updated++;
-          factCettePasse.push({ type: step.type, lignes: [ligne] });
-        });
-        return;
-      }
-
-      const lignes = props.map(prop => {
-        const baseRef = totauxBase[prop.id];
-        const baseAvecIndice = totauxAvecIndice[prop.id];
-        let montant = 0;
-        if (step.type === 'acompte') {
-          montant = step.valType === 'pct' ? Math.round(baseRef * step.val / 100 * 100)/100 : step.val;
-        } else {
-          const acomptesExist = factCettePasse
-            .filter(f => f.type === 'acompte')
-            .reduce((s,f) => s + (f.lignes||[]).filter(l=>l.propId===prop.id).reduce((ss,l)=>ss+l.montant,0), 0);
-          montant = Math.round((baseAvecIndice - acomptesExist) * 100) / 100;
-        }
-        return { propId: prop.id, nomProp: prop.nom, montantBaseRef: baseRef, base: baseRef, montant };
+        
+        const ligne = { propId: prop.id, nomProp: prop.nom, montantBaseRef: baseRef, base: baseRef, montant };
+        const id = uid();
+        const oldStatus = statusMap[`${pr.id}_${step.id}_${prop.id}`] || { paid: 0, datePaiement: null };
+        
+        db.run('INSERT INTO factures VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [id, currentUserId, annee, pr.id, prop.id, step.id, step.libelle, step.mois, step.type, JSON.stringify([ligne]), '[]', '[]', montant, oldStatus.paid, oldStatus.datePaiement]);
+        
+        created++;
+        factCettePasse.push({ type: step.type, lignes: [ligne] });
       });
-      const montantTotal = Math.round(lignes.reduce((s,l) => s+l.montant, 0) * 100) / 100;
-
-      const existing = db.exec('SELECT * FROM factures WHERE annee=? AND preneurId=? AND stepId=? AND propId IS NULL',
-        [annee, pr.id, step.id]);
-      
-      const id = existing.length ? existing[0].values[0][0] : uid();
-      const sql = existing.length
-        ? 'UPDATE factures SET lignes=?, montantTotal=?, libelle=?, mois=? WHERE id=?'
-        : 'INSERT INTO factures VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-      const vals = existing.length
-        ? [JSON.stringify(lignes), montantTotal, step.libelle, step.mois, id]
-        : [id, annee, pr.id, null, step.id, step.libelle, step.mois, step.type, JSON.stringify(lignes), '[]', '[]', montantTotal, 0, null];
-      
-      db.run(sql, vals);
-      if (!existing.length) created++;
-      else updated++;
-      factCettePasse.push({ type: step.type, lignes });
     });
   });
 
   persist();
   if (errors.length) {
-    alert('⚠️ Problèmes :\n\n' + errors.join('\n'));
+    showNotification(errors.join('\n'), 'Problèmes détectés', '⚠️');
   } else {
     const msg = [];
     if (created > 0) msg.push(`${created} créée(s)`);
     if (updated > 0) msg.push(`${updated} mise(s) à jour`);
-    alert('✅ ' + msg.join(', ') + '.');
+    showNotification(msg.join(', ') + '.', 'Factures mises à jour', '✅');
   }
   render();
 }
@@ -1413,10 +1811,113 @@ function toggleFactPaid(id) {
   if (f) {
     const newPaid = f.paid ? 0 : 1;
     const datePaiement = f.paid ? null : new Date().toISOString().split('T')[0];
-    db.run('UPDATE factures SET paid=?, datePaiement=? WHERE id=?', [newPaid, datePaiement, id]);
+    db.run('UPDATE factures SET paid=?, datePaiement=? WHERE id=? AND userId=?', [newPaid, datePaiement, id, currentUserId]);
     persist();
     render();
   }
+}
+
+function printFacture(id) {
+  const factures = getFactures();
+  const preneurs = getPreneurs();
+  const proprietes = getProprietes();
+  const params = getParams();
+  
+  const f = factures.find(x => x.id === id);
+  if (!f) return;
+  
+  const preneur = preneurs.find(p => p.id === f.preneurId);
+  const prop = proprietes.find(p => p.id === f.propId);
+  const typeLabel = f.type === 'acompte' ? 'ACOMPTE' : 'FACTURE';
+  const date = new Date().toLocaleDateString('fr-FR');
+  const totalFinal = Math.round((f.montantTotal || 0) * 100) / 100;
+  
+  let lignesHtml = '';
+  if (f.lignes && Array.isArray(f.lignes)) {
+    lignesHtml = f.lignes.map(ligne => '<tr><td>' + (ligne.libelle || '—') + '</td><td style="text-align:center">' + (ligne.qty || 1) + '</td><td style="text-align:right">' + (ligne.montant || 0).toFixed(2) + ' €</td></tr>').join('');
+  }
+  
+  let adjHtml = '';
+  let totalAdjustments = 0;
+  if (f.adjustments && Array.isArray(f.adjustments) && f.adjustments.length) {
+    totalAdjustments = f.adjustments.reduce((sum, adj) => sum + (adj.montant || 0), 0);
+    adjHtml = '<tr style="background:#fff3cd"><td colspan="2">Ajustements</td><td></td></tr>' + 
+      f.adjustments.map(adj => '<tr><td>' + (adj.libelle || 'Ajustement') + '</td><td></td><td style="text-align:right">' + (adj.montant || 0).toFixed(2) + ' €</td></tr>').join('');
+  }
+  
+  // Calcul du total avec ajustements
+  const totalAvecAjustements = Math.round((totalFinal + totalAdjustments) * 100) / 100;
+  
+  // Calcul du solde
+  let calculSoldeHtml = '';
+  if (f.type === 'solde') {
+    // La base est stockée dans les lignes
+    const base = f.lignes && Array.isArray(f.lignes) && f.lignes[0] ? (f.lignes[0].base || f.lignes[0].montantBaseRef || 1000) : 1000;
+    const indice = (params.indices && params.indices[f.annee]) || 0;
+    const montantIndice = Math.round(base * indice / 100 * 100) / 100;
+    const loyerRevise = Math.round((base + montantIndice) * 100) / 100;
+    
+    // Récupérer UNIQUEMENT les acomptes PAYÉS de l'année
+    const acomptesPayes = factures
+      .filter(fac => fac.annee === f.annee && fac.preneurId === f.preneurId && fac.propId === f.propId && fac.type === 'acompte' && fac.paid)
+      .reduce((sum, fac) => sum + (fac.montantTotal || 0), 0);
+    
+    calculSoldeHtml = '<div class="calculation-section"><h3>Calcul du loyer</h3>' +
+      '<div class="calc-row"><span>Loyer annuel total (base)</span><span>' + base.toFixed(2) + ' €</span></div>' +
+      '<div class="calc-row"><span>Indice de fermage ' + f.annee + ' (' + (indice > 0 ? '+' : '') + indice.toFixed(1) + '%)</span><span>+' + montantIndice.toFixed(2) + ' €</span></div>' +
+      '<div class="calc-row total"><span>= Loyer annuel révisé</span><span>' + loyerRevise.toFixed(2) + ' €</span></div>' +
+      (acomptesPayes > 0 ? '<div class="calc-row"><span>Acomptes payés (à déduire)</span><span>- ' + acomptesPayes.toFixed(2) + ' €</span></div>' : '') +
+      '</div>';
+  }
+  
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + typeLabel + '</title><style>' +
+    'body{font-family:Arial,sans-serif;padding:20px;background:#fff;color:#333;line-height:1.6}' +
+    '.container{max-width:900px;margin:0 auto;background:white;padding:30px;border:1px solid #ddd}' +
+    'h1{color:#854f0b;font-size:28px;margin-bottom:20px}' +
+    '.header-info{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:2px solid #854f0b;padding-bottom:15px}' +
+    '.header-info div{flex:1}' +
+    '.parties{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin:30px 0}' +
+    '.party{border:1px solid #ddd;padding:15px;border-radius:5px}' +
+    '.party h3{color:#854f0b;font-size:13px;margin-bottom:10px;text-transform:uppercase}' +
+    'table{width:100%;border-collapse:collapse;margin:20px 0}' +
+    'th{background:#854f0b;color:white;padding:12px;text-align:left;font-weight:bold}' +
+    'td{padding:10px;border-bottom:1px solid #ddd}' +
+    'tr:hover{background:#f9f9f9}' +
+    '.total-section{text-align:right;margin-top:20px;padding-top:20px;border-top:2px solid #854f0b}' +
+    '.total-row{display:flex;justify-content:flex-end;gap:40px;margin:10px 0;font-size:14px}' +
+    '.total-final{font-size:18px;font-weight:bold;color:#854f0b;margin-top:15px;padding:10px;background:#f9f7f3}' +
+    '.paid{color:green;font-weight:bold;margin-top:15px}' +
+    '.calculation-section{background:#f9f7f3;padding:20px;border-radius:5px;margin:20px 0}' +
+    '.calculation-section h3{color:#854f0b;font-size:14px;margin-bottom:15px;text-transform:uppercase}' +
+    '.calc-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dotted #ddd;font-size:14px}' +
+    '.calc-row.total{border-bottom:2px solid #854f0b;font-weight:bold;padding:10px 0}' +
+    '@media print{body{margin:0;padding:0}.container{border:none;box-shadow:none}}' +
+    '</style></head><body><div class="container">' +
+    '<h1>' + typeLabel + ' ' + f.annee + '</h1>' +
+    '<div class="header-info">' +
+    '<div><strong>Numéro:</strong> ' + f.id.substring(0,8) + '<br><strong>Date:</strong> ' + date + '<br><strong>Année:</strong> ' + f.annee + '</div>' +
+    '<div style="text-align:right"><strong>' + params.raisonSociale + '</strong><br>' + (params.siret || '') + '<br>' + (params.adresse || '') + '<br>' + (params.cp || '') + ' ' + (params.ville || '') + '</div>' +
+    '</div>' +
+    '<div class="parties">' +
+    '<div class="party"><h3>Propriétaire</h3><strong>' + (params.raisonSociale || 'Propriétaire') + '</strong><br>' + (params.siret ? 'SIRET: ' + params.siret + '<br>' : '') + (params.adresse || '') + '<br>' + (params.cp || '') + ' ' + (params.ville || '') + '<br>' + (params.tel ? 'Tél: ' + params.tel : '') + '<br>' + (params.email || '') + '</div>' +
+    '<div class="party"><h3>Locataire</h3><strong>' + (preneur?.raisonSociale || preneur?.nom || 'Locataire') + '</strong><br>' + (preneur?.siret ? 'SIRET: ' + preneur.siret + '<br>' : '') + (preneur?.forme ? preneur.forme + '<br>' : '') + (preneur?.adr || '') + '<br>' + (preneur?.cp || '') + ' ' + (preneur?.ville || '') + '<br>' + (preneur?.tel ? 'Tél: ' + preneur.tel : '') + '<br>' + (preneur?.email || '') + '</div>' +
+    '</div>' +
+    '<div class="party" style="margin:20px 0"><h3>Propriété</h3><strong>' + (prop?.nom || 'Propriété') + '</strong><br>' + (prop?.adresse || '') + '<br>' + (prop?.cp || '') + ' ' + (prop?.ville || '') + (prop?.surface ? '<br>Surface: ' + prop.surface + ' ha' : '') + '</div>' +
+    calculSoldeHtml +
+    '<table><thead><tr style="background:#854f0b;color:white"><th style="width:50%">Description</th><th style="width:25%;text-align:center">Quantité</th><th style="width:25%;text-align:right">Montant</th></tr></thead><tbody>' +
+    lignesHtml + adjHtml +
+    '</tbody></table>' +
+    '<div class="total-section">' +
+    '<div class="total-row"><span>Montant HT:</span><span>' + totalFinal.toFixed(2) + ' €</span></div>' +
+    (totalAdjustments !== 0 ? '<div class="total-row"><span>Ajustements:</span><span>' + (totalAdjustments > 0 ? '+' : '') + totalAdjustments.toFixed(2) + ' €</span></div>' : '') +
+    (f.paid ? '<div class="paid">✓ PAYÉ</div>' : '<div class="total-final">À PAYER: ' + totalAvecAjustements.toFixed(2) + ' €</div>') +
+    '</div>' +
+    '</div></body></html>';
+  
+  const win = window.open('', '', 'width=1000,height=800');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
 }
 
 function openFactureDetail(id) {
@@ -1477,12 +1978,21 @@ function openFactureDetail(id) {
   } else {
     const propIds = (f.lignes||[]).map(l => l.propId).filter(Boolean);
     const acomptesVerses = factures
-      .filter(x => x.annee === f.annee && x.preneurId === f.preneurId && x.type === 'acompte')
+      .filter(x => x.annee === f.annee && x.preneurId === f.preneurId && x.type === 'acompte' && x.paid)
       .reduce((s, x) => s + (x.lignes||[]).filter(l => propIds.includes(l.propId)).reduce((ss,l) => ss+(l.montant||0), 0), 0);
     const totalBrut = Math.round((sousTotal + montantIndice) * 100) / 100;
     const indemnites = f.indemnites || [];
     const totalIndemnites = Math.round(indemnites.reduce((s,i) => s + (i.montant||0), 0) * 100) / 100;
-    const totalFinal = Math.round((totalBrut - acomptesVerses - totalIndemnites) * 100) / 100;
+    
+    let totalAdjustments = 0;
+    if (f.adjustments) {
+      const adj = Array.isArray(f.adjustments) ? f.adjustments : JSON.parse(f.adjustments || '[]');
+      if (adj && adj.length > 0) {
+        totalAdjustments = Math.round(adj.reduce((s,a) => s + (a.montant||0), 0) * 100) / 100;
+      }
+    }
+    
+    const totalFinal = Math.round((totalBrut - acomptesVerses - totalIndemnites + totalAdjustments) * 100) / 100;
 
     const indemnHtml = indemnites.map(i => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f0ede8;">
@@ -1502,7 +2012,16 @@ function openFactureDetail(id) {
         <div class="drow" style="border-top:1px dashed #d3d1c7;padding-top:8px;margin-top:4px;font-weight:700;">
           <span>= Loyer annuel révisé</span><span>${totalBrut.toFixed(2)} €</span>
         </div>
-        ${acomptesVerses > 0 ? `<div class="drow" style="color:#888780;"><span>💰 Acomptes déjà versés (à déduire)</span><span>− ${acomptesVerses.toFixed(2)} €</span></div>` : ''}
+        ${acomptesVerses > 0 ? `<div class="drow" style="color:#888780;"><span>💰 Acomptes payés (à déduire)</span><span>− ${acomptesVerses.toFixed(2)} €</span></div>` : ''}
+        <div style="border-top:1px dashed #d3d1c7;padding-top:8px;margin-top:8px;" id="adjustments-section">
+          ${f.adjustments && Array.isArray(f.adjustments) && f.adjustments.length > 0 ? (() => {
+            const adj = f.adjustments;
+            return adj.map((a, i) => `<div class="drow" style="color:#d97706;"><span>⚠️ ${a.libelle}</span><span>${a.montant > 0 ? '+' : ''}${a.montant.toFixed(2)} €<button style="margin-left:12px;padding:4px 8px;font-size:12px;cursor:pointer;color:#c1121f;border:1px solid #c1121f;border-radius:4px;background:white;" onclick="removeAdjustment('${f.id}', ${i})">✕</button></span></div>`).join('');
+          })() : ''}
+          <div style="margin-top:8px;">
+            <button style="font-size:12px;padding:6px 10px;cursor:pointer;border:1px dashed #854f0b;background:white;color:#854f0b;border-radius:4px;" onclick="openAdjustmentModal('${f.id}')">+ Ajouter ajustement</button>
+          </div>
+        </div>
       </div>
 
       <div style="background:#854f0b;color:white;border-radius:8px;padding:14px 18px;margin-top:8px;">
@@ -1518,9 +2037,10 @@ function openFactureDetail(id) {
     ${header}
     ${lignesHtml}
     ${totalBlock}
-    <div style="margin-top:16px;">
-      <button class="btn ${f.paid?'':'btn-success'}" style="width:100%;justify-content:center;padding:14px;" onclick="toggleFactPaid('${f.id}');closeModal('facture');render();">
-        ${f.paid ? '↩️ Annuler le paiement' : '✅ Marquer comme payé'}
+    <div style="margin-top:16px;display:flex;gap:10px;">
+      <button class="btn" style="flex:1;padding:12px;" onclick="printFacture('${f.id}')">🖨️ Imprimer</button>
+      <button class="btn ${f.paid?'':'btn-success'}" style="flex:1;padding:12px;" onclick="toggleFactPaid('${f.id}');closeModal('facture');render();">
+        ${f.paid ? '↩️ Annuler paiement' : '✅ Marquer payé'}
       </button>
     </div>`;
   openModal('facture');
@@ -1547,7 +2067,13 @@ document.addEventListener('mousemove', e => {
 /* ================================================================
    INIT
 ================================================================ */
-initDB();
+async function start() {
+  await initDB();
+  checkSession();
+  render();
+}
+
+start();
 </script>
 </body>
 </html>
