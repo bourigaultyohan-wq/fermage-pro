@@ -648,8 +648,8 @@ function getPreneurs() {
   return result[0].values.map(row => ({
     id: row[0], userId: row[1], raisonSociale: row[2], forme: row[3], nom: row[4], prenom: row[5],
     siret: row[6], tva: row[7], msa: row[8], naf: row[9], adr: row[10], cp: row[11],
-    ville: row[12], tel: row[13], email: row[14], mode: row[15],
-    planning: row[16] ? JSON.parse(row[16]) : []
+    ville: row[12], tel: row[13], email: row[14],
+    planning: row[15] ? JSON.parse(row[15]) : []
   }));
 }
 
@@ -930,11 +930,17 @@ function render() {
   
   if (!currentUserId) {
     app.classList.add('no-auth');
+    const topbar = document.querySelector('.topbar');
+    if (topbar) topbar.style.display = 'none';
+    const actions = document.getElementById('topbar-actions');
+    if (actions) actions.innerHTML = '';
     c.innerHTML = '';
     renderLogin();
     return;
   }
   app.classList.remove('no-auth');
+  const topbar = document.querySelector('.topbar');
+  if (topbar) topbar.style.display = '';
   c.innerHTML = '';
   
   const actions = document.getElementById('topbar-actions');
